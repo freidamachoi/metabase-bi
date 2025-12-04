@@ -23,8 +23,8 @@ This document maps each column in the **Combined Installs and Trouble Tickets** 
 | `SERVICELINE_ADDRESS_CITY` | `sa.SERVICELINE_ADDRESS_CITY`<br>`CAMVIO.PUBLIC.SERVICELINE_ADDRESSES` | `sa.SERVICELINE_ADDRESS_CITY`<br>`CAMVIO.PUBLIC.SERVICELINE_ADDRESSES` | **City** | **Installation address** city |
 | `SERVICELINE_ADDRESS_STATE` | `sa.SERVICELINE_ADDRESS_STATE`<br>`CAMVIO.PUBLIC.SERVICELINE_ADDRESSES` | `sa.SERVICELINE_ADDRESS_STATE`<br>`CAMVIO.PUBLIC.SERVICELINE_ADDRESSES` | **State** | **Installation address** state |
 | `SERVICELINE_ADDRESS_ZIPCODE` | `sa.SERVICELINE_ADDRESS_ZIPCODE`<br>`CAMVIO.PUBLIC.SERVICELINE_ADDRESSES` | `sa.SERVICELINE_ADDRESS_ZIPCODE`<br>`CAMVIO.PUBLIC.SERVICELINE_ADDRESSES` | **ZIP Code** | **Installation address** ZIP code |
-| `STATUS` | `latest.STATUS`<br>`CAMVIO.PUBLIC.SERVICEORDERS` | `CAST(NULL AS TEXT)` | **Category** | Service order status (NULL for trouble tickets) |
-| `TROUBLE_TICKET_STATUS` | `CAST(NULL AS TEXT)` | `tt.STATUS`<br>`CAMVIO.PUBLIC.TROUBLE_TICKETS` | **Category** | Trouble ticket status (NULL for installs) |
+| `STATUS` | `latest.STATUS`<br>`CAMVIO.PUBLIC.SERVICEORDERS` | `tt.STATUS`<br>`CAMVIO.PUBLIC.TROUBLE_TICKETS` | **Category** | **Unified status field** - Service order status for installs, trouble ticket status for trouble tickets |
+| `TROUBLE_TICKET_STATUS` | `latest.STATUS`<br>`CAMVIO.PUBLIC.SERVICEORDERS` | `tt.STATUS`<br>`CAMVIO.PUBLIC.TROUBLE_TICKETS` | **Category** | Same as STATUS (kept for consistency/backward compatibility) |
 | `SERVICEORDER_TYPE` | `latest.SERVICEORDER_TYPE`<br>`CAMVIO.PUBLIC.SERVICEORDERS` | `CAST(NULL AS TEXT)` | **Category** | Service order type (NULL for trouble tickets) |
 | `SERVICE_MODEL` | `sa.SERVICE_MODEL`<br>`CAMVIO.PUBLIC.SERVICELINE_ADDRESSES` | `sa.SERVICE_MODEL`<br>`CAMVIO.PUBLIC.SERVICELINE_ADDRESSES` | **Category** | Service model type |
 | `TASK_NAME` | `latest.TASK_NAME`<br>`CAMVIO.PUBLIC.SERVICEORDER_TASKS` | `lt.TASK_NAME`<br>`CAMVIO.PUBLIC.TROUBLE_TICKET_TASKS` | **Category** | Task name (should be 'TECHNICIAN VISIT' or contains 'Tech Visit') |
@@ -92,15 +92,15 @@ This document maps each column in the **Combined Installs and Trouble Tickets** 
 
 ### STATUS
 - **Installs**: `CAMVIO.PUBLIC.SERVICEORDERS.STATUS` (via `latest` subquery, should be 'COMPLETED')
-- **Trouble Tickets**: `NULL`
-- **Semantic Type**: **Category**
-- **Purpose**: Service order status
-
-### TROUBLE_TICKET_STATUS
-- **Installs**: `NULL`
 - **Trouble Tickets**: `CAMVIO.PUBLIC.TROUBLE_TICKETS.STATUS` (should contain 'CLOSED')
 - **Semantic Type**: **Category**
-- **Purpose**: Trouble ticket status
+- **Purpose**: **Unified status field** - Works for both installs and trouble tickets
+
+### TROUBLE_TICKET_STATUS
+- **Installs**: `CAMVIO.PUBLIC.SERVICEORDERS.STATUS` (same as STATUS for installs)
+- **Trouble Tickets**: `CAMVIO.PUBLIC.TROUBLE_TICKETS.STATUS` (same as STATUS for trouble tickets)
+- **Semantic Type**: **Category**
+- **Purpose**: Same as STATUS (kept for consistency/backward compatibility)
 
 ### SERVICEORDER_TYPE
 - **Installs**: `CAMVIO.PUBLIC.SERVICEORDERS.SERVICEORDER_TYPE` (via `latest` subquery)
@@ -190,8 +190,9 @@ This document maps each column in the **Combined Installs and Trouble Tickets** 
 ## Important Notes
 
 ### NULL Values
-- **Installs**: `TROUBLE_TICKET_ID`, `TROUBLE_TICKET_STATUS` are NULL
-- **Trouble Tickets**: `VISIT_ID`, `SERVICEORDER_ID`, `STATUS`, `SERVICEORDER_TYPE` are NULL
+- **Installs**: `TROUBLE_TICKET_ID` is NULL
+- **Trouble Tickets**: `VISIT_ID`, `SERVICEORDER_ID`, `SERVICEORDER_TYPE` are NULL
+- **Note**: `STATUS` and `TROUBLE_TICKET_STATUS` now have values for both types (unified status field)
 - This is intentional - fields are NULL when not applicable to that visit type
 
 ### Latest Task Selection
@@ -231,12 +232,14 @@ case(
 
 ### Unified Status
 
+**Note**: `STATUS` field is already unified - it contains the status for both installs and trouble tickets. No custom column needed unless you want to format it differently.
+
 ```javascript
-// Combined Status Field
+// Formatted Status (optional)
 case(
   [Visit Type] = "Install",
-  [Status],
-  [Trouble Ticket Status]
+  concat("Install: ", [Status]),
+  concat("Ticket: ", [Status])
 )
 ```
 
