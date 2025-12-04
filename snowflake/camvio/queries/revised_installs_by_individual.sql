@@ -32,7 +32,7 @@ SELECT
     -- Core Requirements
     latest.ASSIGNEE,                    -- Technician/Individual (from latest task)
     ca.ACCOUNT_TYPE,                   -- Account Type
-    latest.TASK_ENDED                  -- Date of Install (latest task ended date)
+    latest.TASK_ENDED,                 -- Date of Install (latest task ended date)
     
     -- Address Information
     sa.SERVICELINE_ADDRESS1,
