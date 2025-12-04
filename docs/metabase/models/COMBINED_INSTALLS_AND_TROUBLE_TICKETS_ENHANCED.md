@@ -197,7 +197,7 @@ ORDER BY [Assignee];
 **Metabase Expression**:
 
 ```javascript
-coalesce([Order Id], [Trouble Ticket Id])
+toString(coalesce([Order Id], [Trouble Ticket Id]))
 ```
 
 **Alternative with Formatting** (if you want to prefix the values):
@@ -206,20 +206,20 @@ coalesce([Order Id], [Trouble Ticket Id])
 coalesce(
   case(
     [Order Id] IS NOT NULL,
-    concat("Order: ", [Order Id]),
+    concat("Order: ", toString([Order Id])),
     [Trouble Ticket Id] IS NOT NULL,
-    concat("Ticket: ", [Trouble Ticket Id])
+    concat("Ticket: ", toString([Trouble Ticket Id]))
   ),
   "Unknown"
 )
 ```
 
-**Semantic Type**: **Entity Key** or **Number** (depending on whether you want it formatted as text)
+**Semantic Type**: **Entity Key** or **Text** (cast as string)
 
 **Notes**:
-- **Simple Version**: The basic `coalesce()` expression is recommended - it returns the non-NULL value directly
+- **Simple Version**: The basic `coalesce()` with `toString()` expression is recommended - it returns the non-NULL value as a string
 - **Formatting Version**: Use the alternative if you want to distinguish between orders and tickets in the display value
-- **Data Type**: ORDER_ID and TROUBLE_TICKET_ID are both numbers, so the result will be a number
+- **Data Type**: Result is cast as string/text using `toString()`
 - **Always Has Value**: Since one field is always NULL and the other always has a value, this field will never be NULL (unless both are somehow NULL, which shouldn't happen)
 
 ## Additional Custom Columns (Future)
@@ -286,8 +286,8 @@ case(
      - Paste the Partner expression above (update with actual ASSIGNEE → Partner mappings)
      - Set semantic type to **Category**
    - Add custom column: "Order/Trouble Ticket #"
-     - Paste the coalesce expression: `coalesce([Order Id], [Trouble Ticket Id])`
-     - Set semantic type to **Entity Key** or **Number**
+     - Paste the expression: `toString(coalesce([Order Id], [Trouble Ticket Id]))`
+     - Set semantic type to **Entity Key** or **Text**
 
 ## Testing the Rate Column
 
