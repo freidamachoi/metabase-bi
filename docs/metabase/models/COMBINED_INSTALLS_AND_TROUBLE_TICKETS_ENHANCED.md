@@ -101,6 +101,93 @@ coalesce(
 )
 ```
 
+### Partner
+
+**Purpose**: Map ASSIGNEE (technician) values to Partner names for grouping and reporting
+
+**Business Logic**: Maps each ASSIGNEE value to a Partner name. This is a rigid mapping that requires maintenance as ASSIGNEE values change.
+
+**Metabase Expression** (Template - Update with actual ASSIGNEE and Partner values):
+
+```javascript
+coalesce(
+  case(
+    // Partner 1 - Example assignees
+    [Assignee] = "John Smith",
+    "Partner A",
+    [Assignee] = "Jane Doe",
+    "Partner A",
+    
+    // Partner 2 - Example assignees
+    [Assignee] = "Bob Johnson",
+    "Partner B",
+    [Assignee] = "Alice Williams",
+    "Partner B",
+    
+    // Partner 3 - Example assignees
+    [Assignee] = "Charlie Brown",
+    "Partner C",
+    
+    // Add more mappings as needed...
+    // [Assignee] = "Technician Name",
+    // "Partner Name"
+  ),
+  "Unknown"  // Default value if ASSIGNEE doesn't match any mapping
+)
+```
+
+**Case-Insensitive Version** (Recommended if ASSIGNEE values might have inconsistent casing):
+
+```javascript
+coalesce(
+  case(
+    // Partner 1 - Example assignees (case-insensitive)
+    upper(trim([Assignee])) = "JOHN SMITH",
+    "Partner A",
+    upper(trim([Assignee])) = "JANE DOE",
+    "Partner A",
+    
+    // Partner 2 - Example assignees
+    upper(trim([Assignee])) = "BOB JOHNSON",
+    "Partner B",
+    upper(trim([Assignee])) = "ALICE WILLIAMS",
+    "Partner B",
+    
+    // Partner 3 - Example assignees
+    upper(trim([Assignee])) = "CHARLIE BROWN",
+    "Partner C",
+    
+    // Add more mappings as needed...
+    // upper(trim([Assignee])) = "TECHNICIAN NAME",
+    // "Partner Name"
+  ),
+  "Unknown"  // Default value if ASSIGNEE doesn't match any mapping
+)
+```
+
+**Semantic Type**: **Category**
+
+**Notes**:
+- ⚠️ **Maintenance Required**: This mapping is rigid and must be updated whenever:
+  - New ASSIGNEE values appear in the data
+  - ASSIGNEE values change (e.g., name corrections, spelling changes)
+  - Partner assignments change
+- **Case Sensitivity**: Use the case-insensitive version if ASSIGNEE values might have inconsistent casing
+- **Default Value**: "Unknown" helps identify unmapped ASSIGNEE values that need to be added to the mapping
+- **Best Practice**: Regularly review rows with Partner = "Unknown" to identify new ASSIGNEE values that need mapping
+
+**Getting List of ASSIGNEE Values**:
+
+To get a list of all unique ASSIGNEE values for mapping:
+
+```sql
+-- Get all unique ASSIGNEE values
+SELECT DISTINCT [Assignee]
+FROM [Combined Installs and Trouble Calls (Base)]
+WHERE [Assignee] IS NOT NULL
+ORDER BY [Assignee];
+```
+
 ## Additional Custom Columns (Future)
 
 ### Total Revenue
@@ -159,8 +246,11 @@ case(
 3. **Add Custom Columns**:
    - Go to model settings
    - Add custom column: "Rate"
-   - Paste the expression above
-   - Set semantic type to **Currency** or **Number**
+     - Paste the Rate expression above
+     - Set semantic type to **Currency** or **Number**
+   - Add custom column: "Partner"
+     - Paste the Partner expression above (update with actual ASSIGNEE → Partner mappings)
+     - Set semantic type to **Category**
 
 ## Testing the Rate Column
 
@@ -197,4 +287,5 @@ ORDER BY [Visit Type], [Account Type];
 - **Account Type values**: Verify the exact values in your data (may be "Residential", "RESIDENTIAL", "Business", "BUSINESS", "Enterprise", "ENTERPRISE", etc.)
 - **Semantic Type**: Set Rate as **Currency** if these are dollar amounts, or **Number** if they're just numeric values
 - **Null handling**: Uses `coalesce()` with a default value of 0 if conditions don't match - this helps identify data quality issues (rows with Rate = 0 indicate unexpected Visit Type/Account Type combinations)
+- **Partner mapping**: The Partner field requires ongoing maintenance as ASSIGNEE values change. Regularly review and update the mapping expression to ensure all technicians are properly assigned to partners.
 
