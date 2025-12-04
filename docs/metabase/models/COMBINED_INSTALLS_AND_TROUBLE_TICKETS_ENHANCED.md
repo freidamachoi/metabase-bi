@@ -19,9 +19,11 @@ This document contains custom column definitions for the **Combined Installs and
 - **Installs**:
   - Residential: $162
   - Business: $172
+  - Enterprise: $172 (same as Business)
 - **Trouble Tickets**:
   - Residential: $75
   - Business: $80
+  - Enterprise: $80 (same as Business)
 
 **Metabase Expression**:
 
@@ -36,12 +38,20 @@ coalesce(
     [Visit Type] = "Install" and [Account Type] = "Business",
     172,
     
+    // Install - Enterprise (same as Business)
+    [Visit Type] = "Install" and [Account Type] = "Enterprise",
+    172,
+    
     // Trouble Ticket - Residential
     [Visit Type] = "Trouble Ticket" and [Account Type] = "Residential",
     75,
     
     // Trouble Ticket - Business
     [Visit Type] = "Trouble Ticket" and [Account Type] = "Business",
+    80,
+    
+    // Trouble Ticket - Enterprise (same as Business)
+    [Visit Type] = "Trouble Ticket" and [Account Type] = "Enterprise",
     80
   ),
   0  // Default value if no conditions match (should not occur if data is clean)
@@ -51,7 +61,8 @@ coalesce(
 **Semantic Type**: **Currency** or **Number**
 
 **Notes**:
-- Assumes Account Type values are exactly "Residential" and "Business" (case-sensitive)
+- Assumes Account Type values are exactly "Residential", "Business", and "Enterprise" (case-sensitive)
+- Enterprise has the same rate as Business for both Install and Trouble Ticket visit types
 - If Account Type has different values or casing, adjust the conditions accordingly
 - Consider adding error handling if other Account Types exist
 
@@ -70,12 +81,20 @@ coalesce(
     [Visit Type] = "Install" and upper(trim([Account Type])) = "BUSINESS",
     172,
     
+    // Install - Enterprise (same as Business)
+    [Visit Type] = "Install" and upper(trim([Account Type])) = "ENTERPRISE",
+    172,
+    
     // Trouble Ticket - Residential
     [Visit Type] = "Trouble Ticket" and upper(trim([Account Type])) = "RESIDENTIAL",
     75,
     
     // Trouble Ticket - Business
     [Visit Type] = "Trouble Ticket" and upper(trim([Account Type])) = "BUSINESS",
+    80,
+    
+    // Trouble Ticket - Enterprise (same as Business)
+    [Visit Type] = "Trouble Ticket" and upper(trim([Account Type])) = "ENTERPRISE",
     80
   ),
   0  // Default value if no conditions match
@@ -167,13 +186,15 @@ ORDER BY [Visit Type], [Account Type];
 |-----------|--------------|------|----------------|
 | Install | Residential | 162 | [number of installs] |
 | Install | Business | 172 | [number of installs] |
+| Install | Enterprise | 172 | [number of installs] |
 | Trouble Ticket | Residential | 75 | [number of tickets] |
 | Trouble Ticket | Business | 80 | [number of tickets] |
+| Trouble Ticket | Enterprise | 80 | [number of tickets] |
 
 ## Notes
 
 - **Rate values**: Confirm these are the correct rates for your business
-- **Account Type values**: Verify the exact values in your data (may be "Residential", "RESIDENTIAL", "Business", "BUSINESS", etc.)
+- **Account Type values**: Verify the exact values in your data (may be "Residential", "RESIDENTIAL", "Business", "BUSINESS", "Enterprise", "ENTERPRISE", etc.)
 - **Semantic Type**: Set Rate as **Currency** if these are dollar amounts, or **Number** if they're just numeric values
 - **Null handling**: Uses `coalesce()` with a default value of 0 if conditions don't match - this helps identify data quality issues (rows with Rate = 0 indicate unexpected Visit Type/Account Type combinations)
 
