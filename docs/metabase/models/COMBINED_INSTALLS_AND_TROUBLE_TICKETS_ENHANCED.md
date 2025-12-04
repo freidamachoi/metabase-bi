@@ -26,25 +26,25 @@ This document contains custom column definitions for the **Combined Installs and
 **Metabase Expression**:
 
 ```javascript
-case(
-  // Install - Residential
-  [Visit Type] = "Install" and [Account Type] = "Residential",
-  162,
-  
-  // Install - Business
-  [Visit Type] = "Install" and [Account Type] = "Business",
-  172,
-  
-  // Trouble Ticket - Residential
-  [Visit Type] = "Trouble Ticket" and [Account Type] = "Residential",
-  75,
-  
-  // Trouble Ticket - Business
-  [Visit Type] = "Trouble Ticket" and [Account Type] = "Business",
-  80,
-  
-  // Default (should not occur if data is clean)
-  null
+coalesce(
+  case(
+    // Install - Residential
+    [Visit Type] = "Install" and [Account Type] = "Residential",
+    162,
+    
+    // Install - Business
+    [Visit Type] = "Install" and [Account Type] = "Business",
+    172,
+    
+    // Trouble Ticket - Residential
+    [Visit Type] = "Trouble Ticket" and [Account Type] = "Residential",
+    75,
+    
+    // Trouble Ticket - Business
+    [Visit Type] = "Trouble Ticket" and [Account Type] = "Business",
+    80
+  ),
+  0  // Default value if no conditions match (should not occur if data is clean)
 )
 ```
 
@@ -60,25 +60,25 @@ case(
 If Account Type values might have different casing:
 
 ```javascript
-case(
-  // Install - Residential
-  [Visit Type] = "Install" and upper(trim([Account Type])) = "RESIDENTIAL",
-  162,
-  
-  // Install - Business
-  [Visit Type] = "Install" and upper(trim([Account Type])) = "BUSINESS",
-  172,
-  
-  // Trouble Ticket - Residential
-  [Visit Type] = "Trouble Ticket" and upper(trim([Account Type])) = "RESIDENTIAL",
-  75,
-  
-  // Trouble Ticket - Business
-  [Visit Type] = "Trouble Ticket" and upper(trim([Account Type])) = "BUSINESS",
-  80,
-  
-  // Default
-  null
+coalesce(
+  case(
+    // Install - Residential
+    [Visit Type] = "Install" and upper(trim([Account Type])) = "RESIDENTIAL",
+    162,
+    
+    // Install - Business
+    [Visit Type] = "Install" and upper(trim([Account Type])) = "BUSINESS",
+    172,
+    
+    // Trouble Ticket - Residential
+    [Visit Type] = "Trouble Ticket" and upper(trim([Account Type])) = "RESIDENTIAL",
+    75,
+    
+    // Trouble Ticket - Business
+    [Visit Type] = "Trouble Ticket" and upper(trim([Account Type])) = "BUSINESS",
+    80
+  ),
+  0  // Default value if no conditions match
 )
 ```
 
@@ -97,14 +97,16 @@ case(
 
 ```javascript
 // Categorize rates
-case(
-  [Rate] >= 150,
-  "High",
-  [Rate] >= 100,
-  "Medium",
-  [Rate] < 100,
-  "Low",
-  null
+coalesce(
+  case(
+    [Rate] >= 150,
+    "High",
+    [Rate] >= 100,
+    "Medium",
+    [Rate] < 100,
+    "Low"
+  ),
+  "Unknown"  // Default value if no conditions match
 )
 ```
 
@@ -173,5 +175,5 @@ ORDER BY [Visit Type], [Account Type];
 - **Rate values**: Confirm these are the correct rates for your business
 - **Account Type values**: Verify the exact values in your data (may be "Residential", "RESIDENTIAL", "Business", "BUSINESS", etc.)
 - **Semantic Type**: Set Rate as **Currency** if these are dollar amounts, or **Number** if they're just numeric values
-- **Null handling**: The expression returns null if conditions don't match - this helps identify data quality issues
+- **Null handling**: Uses `coalesce()` with a default value of 0 if conditions don't match - this helps identify data quality issues (rows with Rate = 0 indicate unexpected Visit Type/Account Type combinations)
 
