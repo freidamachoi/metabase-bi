@@ -21,6 +21,8 @@ This report uses a two-tier model structure:
 - No custom columns or calculations
 - Ready for use as-is or as foundation for enhanced model
 
+**Semantic Types**: See [`INSTALLS_BY_INDIVIDUAL_SEMANTIC_TYPES.md`](./INSTALLS_BY_INDIVIDUAL_SEMANTIC_TYPES.md) for recommended semantic type settings for each column.
+
 **Tables Joined**:
 - `SERVICEORDERS` (main table)
 - `SERVICEORDER_TASKS` (INNER JOIN)
