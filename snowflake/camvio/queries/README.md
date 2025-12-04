@@ -32,6 +32,16 @@ This directory contains SQL queries for the Camvio Snowflake instance, including
 - **Purpose**: Same as above, but enriched with Fybe project and work activity data
 - **Use Case**: When you need both Camvio service order details and Fybe work details
 
+### `combined_installs_and_trouble_tickets.sql` ⭐ **UNIFIED MODEL**
+- **Purpose**: Combines completed installations and closed trouble tickets into one unified view
+- **Structure**: UNION ALL query combining installs and trouble tickets
+- **Key Feature**: `VISIT_TYPE` field distinguishes between 'Install' and 'Trouble Ticket'
+- **Use Case**: When you need a single model showing all technician visits (installs + trouble tickets)
+- **Benefits**: 
+  - Single source of truth for all technician visits
+  - Easy to filter by type or aggregate across both
+  - Consistent structure for reporting
+
 ## Usage in Metabase
 
 ### Model Structure
