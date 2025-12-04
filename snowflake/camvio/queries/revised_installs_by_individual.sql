@@ -25,15 +25,15 @@
 
 SELECT 
     -- Service Order Identifiers
-    so.ORDER_ID,                   -- Primary identifier (one row per ORDER_ID)
-    so.SERVICEORDER_ID,
-    so.ACCOUNT_ID,
+    latest.ORDER_ID,                   -- Primary identifier (one row per ORDER_ID)
+    latest.SERVICEORDER_ID,
+    latest.ACCOUNT_ID,
     
     -- Core Requirements
-    st.ASSIGNEE,                    -- Technician/Individual (from latest task)
-    ca.ACCOUNT_TYPE,               -- Account Type
-    st.TASK_ENDED,                 -- Date of Install (latest task ended date)
-    st.TASK_STARTED,               -- Install Start Time (from latest task, for duration calculations)
+    latest.ASSIGNEE,                    -- Technician/Individual (from latest task)
+    ca.ACCOUNT_TYPE,                   -- Account Type
+    latest.TASK_ENDED,                 -- Date of Install (latest task ended date)
+    latest.TASK_STARTED,               -- Install Start Time (from latest task, for duration calculations)
     
     -- Address Information
     sa.SERVICELINE_ADDRESS1,
@@ -43,10 +43,10 @@ SELECT
     sa.SERVICELINE_ADDRESS_ZIPCODE,
     
     -- Additional Context (minimal, for filtering/grouping)
-    so.STATUS,                     -- Should always be 'COMPLETED' due to filter
-    so.SERVICEORDER_TYPE,          -- Service order type for grouping
-    sa.SERVICE_MODEL,              -- Service model type (filtered to 'INTERNET')
-    st.TASK_NAME                   -- Should always be 'TECHNICIAN VISIT' due to filter
+    latest.STATUS,                     -- Should always be 'COMPLETED' due to filter
+    latest.SERVICEORDER_TYPE,          -- Service order type for grouping
+    sa.SERVICE_MODEL,                  -- Service model type (filtered to 'INTERNET')
+    latest.TASK_NAME                   -- Should always be 'TECHNICIAN VISIT' due to filter
 
 FROM (
     -- Subquery to get the latest task per order
@@ -71,20 +71,18 @@ FROM (
     WHERE UPPER(st.TASK_NAME) = 'TECHNICIAN VISIT'
         AND UPPER(so.STATUS) = 'COMPLETED'
         AND st.TASK_ENDED IS NOT NULL
-) so
-INNER JOIN CAMVIO.PUBLIC.SERVICEORDERS so_main
-    ON so.ORDER_ID = so_main.ORDER_ID
+) latest
 
 -- Required: Get account type
 INNER JOIN CAMVIO.PUBLIC.CUSTOMER_ACCOUNTS ca 
-    ON so.ACCOUNT_ID = ca.ACCOUNT_ID
+    ON latest.ACCOUNT_ID = ca.ACCOUNT_ID
 
 -- Required: Get installation address
 INNER JOIN CAMVIO.PUBLIC.SERVICELINE_ADDRESSES sa
-    ON so.SERVICELINE_NUMBER = sa.SERVICELINE_NUMBER
+    ON latest.SERVICELINE_NUMBER = sa.SERVICELINE_NUMBER
+    AND UPPER(sa.SERVICE_MODEL) = 'INTERNET'  -- Filter for Internet service only
 
-WHERE so.rn = 1  -- Only get the row with the latest TASK_ENDED per ORDER_ID
-    AND UPPER(sa.SERVICE_MODEL) = 'INTERNET';  -- Filter for Internet service only
+WHERE latest.rn = 1;  -- Only get the row with the latest TASK_ENDED per ORDER_ID
 
 -- ============================================================================
 -- Query Optimizations:
