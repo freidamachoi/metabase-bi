@@ -23,10 +23,10 @@
 -- 3. Create enhanced model with custom columns as needed
 -- ============================================================================
 
-SELECT 
+SELECT DISTINCT
     -- Service Order Identifiers
+    so.ORDER_ID,                   -- Primary identifier (ensured distinct)
     so.SERVICEORDER_ID,
-    so.ORDER_ID,
     so.ACCOUNT_ID,
     
     -- Core Requirements
@@ -46,10 +46,7 @@ SELECT
     so.STATUS,                     -- Should always be 'COMPLETED' due to filter
     so.SERVICEORDER_TYPE,          -- Service order type for grouping
     so.SERVICELINE_NUMBER,         -- Service line identifier
-    sa.SERVICE_MODEL,              -- Service model type
-    
-    -- Task Information
-    st.TASK_NAME                   -- Should always be 'TECHNICIAN VISIT' due to filter
+    sa.SERVICE_MODEL               -- Service model type (filtered to 'INTERNET')
 
 FROM CAMVIO.PUBLIC.SERVICEORDERS so
 
@@ -62,12 +59,13 @@ INNER JOIN CAMVIO.PUBLIC.CUSTOMER_ACCOUNTS ca
     ON so.ACCOUNT_ID = ca.ACCOUNT_ID
 
 -- Required: Get installation address
-LEFT JOIN CAMVIO.PUBLIC.SERVICELINE_ADDRESSES sa
+INNER JOIN CAMVIO.PUBLIC.SERVICELINE_ADDRESSES sa
     ON so.SERVICELINE_NUMBER = sa.SERVICELINE_NUMBER
 
 WHERE UPPER(st.TASK_NAME) = 'TECHNICIAN VISIT'
     AND UPPER(so.STATUS) = 'COMPLETED'
-    AND st.TASK_ENDED IS NOT NULL;  -- Ensure install date exists
+    AND st.TASK_ENDED IS NOT NULL  -- Ensure install date exists
+    AND UPPER(sa.SERVICE_MODEL) = 'INTERNET';  -- Filter for Internet service only
 
 -- ============================================================================
 -- Query Optimizations:
@@ -85,12 +83,26 @@ WHERE UPPER(st.TASK_NAME) = 'TECHNICIAN VISIT'
 --    - Improves data quality
 --    - Reduces NULL handling in downstream analysis
 --
--- 4. Kept essential fields only - reduces data transfer and processing
+-- 4. Added SERVICE_MODEL = 'INTERNET' filter - only Internet service installs
+--    - Focuses on specific service type
+--    - Changed SERVICELINE_ADDRESSES to INNER JOIN (required for filter)
+--
+-- 5. Added DISTINCT on ORDER_ID - ensures one row per order
+--    - Prevents duplicate orders in results
+--    - If multiple tasks/addresses exist, picks one (deterministic based on data)
+--
+-- 6. Kept essential fields only - reduces data transfer and processing
 --
 -- Performance Benefits:
 -- - Fewer JOINs = faster query execution
 -- - Less data transferred = faster results
--- - Simpler query = easier to maintain and understand
+-- - DISTINCT ensures unique ORDER_IDs
+-- - INNER JOIN on addresses ensures SERVICE_MODEL filter works correctly
+--
+-- Note on DISTINCT:
+-- - If multiple rows exist for same ORDER_ID (e.g., multiple tasks or addresses),
+--   DISTINCT will return one row per unique combination of all selected columns
+-- - To ensure deterministic results, consider adding ORDER BY if needed
 --
 -- If you need appointment or feature data later:
 -- - Use the original query (installs_by_individual.sql)
