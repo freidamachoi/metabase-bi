@@ -19,6 +19,21 @@ To discover the structure of the Camvio database, run the queries in [`DISCOVERY
 5. Use **Queries #7-9** to find join keys, dates, and status fields
 6. Run **Query #10** (sample queries) for specific tables of interest
 
+### Saving Query Results
+
+**Option 1: Save CSV files (Recommended for reference)**
+- Download query results as CSV files
+- Save them in the `query_results/` directory
+- Naming convention: `query-15-quick-overview.csv`, `query-02-tables-views.csv`, etc.
+- These CSV files serve as reference data and can be committed to the repository
+
+**Option 2: Document directly in this file**
+- Copy key findings from query results
+- Update the "Available Tables/Views" section below with structured information
+- Focus on tables that are most relevant for joining with Fybe data
+
+**Best Practice**: Do both! Save the CSV files for reference, then document the key findings in this markdown file.
+
 ## Access Information
 
 - **Instance**: CAMVIO-GOFYBE
