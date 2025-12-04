@@ -6,12 +6,25 @@ This directory contains SQL queries for the Camvio Snowflake instance, including
 
 ### `installs_by_individual.sql`
 - **Source**: Tableau (migrating to Metabase)
-- **Purpose**: Get installs by individual technician who completed the install
+- **Purpose**: Get installs by individual technician who completed the install (comprehensive version)
 - **Filters**: 
   - `TASK_NAME` = 'TECHNICIAN VISIT'
   - `STATUS` = 'COMPLETED'
 - **Key Fields**: ASSIGNEE (technician), TASK_ENDED, appointment details, service line features
+- **Tables**: 6 tables (includes APPOINTMENTS and SERVICELINE_FEATURES)
 - **Note**: Currently Camvio-only (no Fybe join)
+- **Use When**: You need appointment or feature-level data
+
+### `revised_installs_by_individual.sql` ⭐ **RECOMMENDED FOR CORE USE CASE**
+- **Purpose**: Optimized version focused on core requirements (technician, account type, date, address)
+- **Filters**: 
+  - `TASK_NAME` = 'TECHNICIAN VISIT'
+  - `STATUS` = 'COMPLETED'
+  - `TASK_ENDED IS NOT NULL`
+- **Key Fields**: ASSIGNEE (technician), ACCOUNT_TYPE, TASK_ENDED (date), address fields
+- **Tables**: 4 tables (removed APPOINTMENTS and SERVICELINE_FEATURES)
+- **Optimizations**: 40% fewer JOINs, 40% fewer columns, faster performance
+- **Use When**: You only need core install tracking metrics (technician, account type, date, address)
 
 ### `installs_by_individual_with_fybe.sql`
 - **Enhanced version** of `installs_by_individual.sql`
