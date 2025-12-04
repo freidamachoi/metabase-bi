@@ -6,14 +6,16 @@ This document maps each column in the **Installs by Individual (Base)** Metabase
 
 ## Column Mapping Table
 
-| Model Column Name | Database Column | Table | Alias Prefix |
-|------------------|----------------|-------|--------------|
-| `ORDER_ID` | `so.ORDER_ID` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` |
-| `ACCOUNT_ID` | `so.ACCOUNT_ID` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` |
-| `STATUS` | `so.STATUS` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` |
-| `SERVICELINE_NUMBER` | `so.SERVICELINE_NUMBER` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` |
-| `SERVICEORDER_TYPE` | `so.SERVICEORDER_TYPE` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` |
-| `SERVICEORDER_ID` | `so.SERVICEORDER_ID` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` |
+**Note**: Column names in the model will appear without table prefixes (e.g., `SERVICEORDER_ID` not `so.SERVICEORDER_ID`). The "Database Column" column shows the table alias used in the SQL SELECT statement to disambiguate which table the column comes from.
+
+| Model Column Name | Database Column (in SQL) | Source Table | Table Alias | Also Exists In |
+|------------------|-------------------------|--------------|-------------|----------------|
+| `ORDER_ID` | `so.ORDER_ID` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` | APPOINTMENTS, SERVICEORDER_ADDRESSES, SERVICEORDER_FEATURES, SERVICEORDER_NOTES |
+| `ACCOUNT_ID` | `so.ACCOUNT_ID` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` | SERVICEORDER_TASKS, CUSTOMER_ACCOUNTS, APPOINTMENTS, SERVICELINE_FEATURES, SERVICELINE_ADDRESSES, and many others |
+| `STATUS` | `so.STATUS` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` | SERVICEORDER_TASKS (different STATUS field) |
+| `SERVICELINE_NUMBER` | `so.SERVICELINE_NUMBER` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` | SERVICEORDER_TASKS, APPOINTMENTS, SERVICELINE_FEATURES, SERVICELINE_ADDRESSES, and many others |
+| `SERVICEORDER_TYPE` | `so.SERVICEORDER_TYPE` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` | (unique to SERVICEORDERS) |
+| `SERVICEORDER_ID` | `so.SERVICEORDER_ID` | `CAMVIO.PUBLIC.SERVICEORDERS` | `so` | SERVICEORDER_TASKS, SERVICEORDER_ADDRESSES, SERVICEORDER_FEATURES, SERVICEORDER_NOTES |
 | `TASK_NAME` | `st.TASK_NAME` | `CAMVIO.PUBLIC.SERVICEORDER_TASKS` | `st` |
 | `TASK_STARTED` | `st.TASK_STARTED` | `CAMVIO.PUBLIC.SERVICEORDER_TASKS` | `st` |
 | `TASK_ENDED` | `st.TASK_ENDED` | `CAMVIO.PUBLIC.SERVICEORDER_TASKS` | `st` |
@@ -133,10 +135,35 @@ CAMVIO.PUBLIC.SERVICELINE_ADDRESSES.SERVICELINE_ADDRESS_STATE
 CAMVIO.PUBLIC.SERVICELINE_ADDRESSES.SERVICELINE_ADDRESS_ZIPCODE
 ```
 
+## Important: Column Name Disambiguation
+
+### Columns That Exist in Multiple Tables
+
+Several column names exist in multiple joined tables. The SELECT statement uses table aliases to specify which table's column is used. In the final Metabase model, the column name will **not** include the table alias, but this document clarifies which table each column comes from.
+
+| Column Name | Exists In Tables | Used From Table | Notes |
+|-------------|------------------|-----------------|-------|
+| `SERVICEORDER_ID` | `SERVICEORDERS`, `SERVICEORDER_TASKS`, `SERVICEORDER_ADDRESSES`, `SERVICEORDER_FEATURES`, `SERVICEORDER_NOTES` | `SERVICEORDERS` (so) | Only `so.SERVICEORDER_ID` is selected |
+| `ORDER_ID` | `SERVICEORDERS`, `APPOINTMENTS`, `SERVICEORDER_ADDRESSES`, `SERVICEORDER_FEATURES`, `SERVICEORDER_NOTES` | `SERVICEORDERS` (so) | Only `so.ORDER_ID` is selected |
+| `ACCOUNT_ID` | `SERVICEORDERS`, `SERVICEORDER_TASKS`, `CUSTOMER_ACCOUNTS`, `APPOINTMENTS`, `SERVICELINE_FEATURES`, `SERVICELINE_ADDRESSES`, and many others | `SERVICEORDERS` (so) | Only `so.ACCOUNT_ID` is selected |
+| `SERVICELINE_NUMBER` | `SERVICEORDERS`, `SERVICEORDER_TASKS`, `APPOINTMENTS`, `SERVICELINE_FEATURES`, `SERVICELINE_ADDRESSES`, and many others | `SERVICEORDERS` (so) | Only `so.SERVICELINE_NUMBER` is selected |
+
+### Why This Matters
+
+- **In the SQL query**: Table aliases (`so.`, `st.`, etc.) disambiguate which table's column is used
+- **In the Metabase model**: Column names appear without table aliases (e.g., just `SERVICEORDER_ID`)
+- **This document**: Clarifies which table each column originates from, preventing confusion
+
+### Example
+
+The query selects `so.SERVICEORDER_ID` from `SERVICEORDERS`, even though `SERVICEORDER_TASKS` also has a `SERVICEORDER_ID` column. In the Metabase model, the column will be named `SERVICEORDER_ID` and will contain values from the `SERVICEORDERS` table.
+
 ## Notes
 
 - All columns use the same name in the model as in the database (no aliasing in SELECT)
-- The query uses table aliases (`so`, `st`, `ca`, `a`, `sf`, `sa`) for readability
+- The query uses table aliases (`so`, `st`, `ca`, `a`, `sf`, `sa`) in the SELECT to disambiguate which table each column comes from
+- In the final Metabase model, column names will **not** include table aliases - they will just be the column name (e.g., `SERVICEORDER_ID`, not `so.SERVICEORDER_ID`)
+- This document clarifies which table each column originates from
 - LEFT JOINs on APPOINTMENTS, SERVICELINE_FEATURES, and SERVICELINE_ADDRESSES may result in NULL values
 - INNER JOINs on SERVICEORDER_TASKS and CUSTOMER_ACCOUNTS ensure these fields always have values
 - The model filters for `TASK_NAME = 'TECHNICIAN VISIT'` and `STATUS = 'COMPLETED'`
