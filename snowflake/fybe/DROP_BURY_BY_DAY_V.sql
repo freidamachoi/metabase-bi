@@ -1,0 +1,86 @@
+create or replace view DATA_LAKE.ANALYTICS.DROP_BURY_BY_DAY_V(
+	DATE_DAY,
+	DATE_KEY,
+	YEAR_NUM,
+	QUARTER_NUM,
+	MONTH_NUM,
+	WEEK_ISO,
+	DOW_ISO,
+	WEEK_START,
+	MONTH_START,
+	QUARTER_START,
+	YEAR_START,
+	PROJECT_ID,
+	ASSET_NUM,
+	DROP_TASK_ID,
+	DROP_ASSET_ID,
+	DROP_CONTRACTOR,
+	"Drop Work Activity",
+	DROP_QUANTITY,
+	"Drop Status",
+	"Drop Created",
+	"Drop Released",
+	"Drop Approved",
+	"Drop Completed",
+	"Drop Work Package",
+	BURY_TASK_ID,
+	BURY_ASSET_ID,
+	BURY_CONTRACTOR,
+	"Bury Work Activity",
+	BURY_QUANTITY,
+	"Bury Status",
+	"Bury Created",
+	"Bury Released",
+	"Bury Approved",
+	"Bury Completed",
+	"Bury Work Package",
+	ACTIVITY_DATE
+) as
+SELECT
+  /* Calendar axis */
+  c.DATE_DAY,
+  c.DATE_KEY,
+  c.YEAR_NUM,
+  c.QUARTER_NUM,
+  c.MONTH_NUM,
+  c.WEEK_ISO,
+  c.DOW_ISO,
+  c.WEEK_START,
+  c.MONTH_START,
+  c.QUARTER_START,
+  c.YEAR_START,
+
+  /* Keys from fact */
+  f.PROJECT_ID,
+  f.ASSET_NUM,
+
+  /* Carry-throughs (edit to taste; keep the ones you need in BI) */
+  f.DROP_TASK_ID,
+  f.DROP_ASSET_ID,
+  f.DROP_CONTRACTOR,
+  f."Drop Work Activity",
+  f.DROP_QUANTITY,
+  f."Drop Status",
+  f."Drop Created",
+  f."Drop Released",
+  f."Drop Approved",
+  f."Drop Completed",
+  f."Drop Work Package",
+
+  f.BURY_TASK_ID,
+  f.BURY_ASSET_ID,
+  f.BURY_CONTRACTOR,
+  f."Bury Work Activity",
+  f.BURY_QUANTITY,
+  f."Bury Status",
+  f."Bury Created",
+  f."Bury Released",
+  f."Bury Approved",
+  f."Bury Completed",
+  f."Bury Work Package",
+
+  /* Persisted event date available for details */
+  f.ACTIVITY_DATE
+FROM ANALYTICS.CALENDAR_DIM      AS c
+LEFT JOIN ANALYTICS.DROP_BURY_DT AS f
+  ON f.DATE_KEY = c.DATE_KEY;

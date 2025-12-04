@@ -1,0 +1,83 @@
+case(
+
+  /* 1) No Drop */
+  isNull([Drop Task ID]),
+  "No Drop",
+
+  /* 2) Placed In Jeopardy (Drop or Bury) */
+  (
+    lower(trim(coalesce([Drop Status], ""))) = "jeopardy"
+    or (
+      [@ Has Bury]
+      and not lower(trim(coalesce([Bury Work Activity], ""))) = "no longer required"
+      and lower(trim(coalesce([Bury Status], ""))) = "jeopardy"
+    )
+  ),
+  "Placed In Jeopardy",
+
+  /* 3) COMPLETE:
+        - No Bury and Drop Approved (and Completed)
+        - Has Bury and Bury Approved and Drop Approved (and Completed)
+  */
+  (
+    (
+      not [@ Has Bury]
+      and not isNull([Drop Approved])
+      and not isNull([Drop Completed])
+    )
+    or
+    (
+      [@ Has Bury]
+      and not lower(trim(coalesce([Bury Work Activity], ""))) = "no longer required"
+      and not isNull([Bury Approved])
+      and not isNull([Drop Approved])
+      and not isNull([Drop Completed])
+    )
+  ),
+  "Complete",
+
+  /* 4) Bury required & pending → 7-day SLA */
+  (
+    [@ Has Bury]
+    and not lower(trim(coalesce([Bury Work Activity], ""))) = "no longer required"
+    and not (
+      not isNull([Bury Approved])
+      or not isNull([Bury Completed])
+    )
+  ),
+  case(
+    [@ Bury Days to Due] < 0,
+    "Overdue",
+    [@ Bury Days to Due] <= 3,
+    "Jeopardy",
+    "On Schedule"
+  ),
+
+  /* 5) Bury completed but not approved → 5-day SLA */
+  (
+    [@ Has Bury]
+    and not lower(trim(coalesce([Bury Work Activity], ""))) = "no longer required"
+    and not (
+      not isNull([Bury Completed])
+      and not isNull([Bury Approved])
+    )
+  ),
+  case(
+    [@ Bury Completed Age] > 3,
+    "Approve Bury",
+    [@ Bury Completed Age] > 5,
+    "Bury Approval Overdue",
+    "On Schedule"
+  ),
+
+  /* 6) Else → Drop-only (no Bury, or Bury NLR, or Bury complete) → 5-day SLA */
+  case(
+    not isNull([Drop Approved]) and not isNull([Drop Completed]),
+    "On Schedule",
+    [@ Drop Complete Age] > 5,
+    "Drop Approval Overdue",
+    [@ Drop Complete Age] > 2,
+    "Jeopardy",
+    "On Schedule"
+  )
+)
