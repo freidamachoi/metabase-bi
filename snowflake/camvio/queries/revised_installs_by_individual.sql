@@ -23,17 +23,17 @@
 -- 3. Create enhanced model with custom columns as needed
 -- ============================================================================
 
-SELECT DISTINCT
+SELECT 
     -- Service Order Identifiers
-    so.ORDER_ID,                   -- Primary identifier (ensured distinct)
+    so.ORDER_ID,                   -- Primary identifier (one row per ORDER_ID)
     so.SERVICEORDER_ID,
     so.ACCOUNT_ID,
     
     -- Core Requirements
-    st.ASSIGNEE,                    -- Technician/Individual
+    st.ASSIGNEE,                    -- Technician/Individual (from latest task)
     ca.ACCOUNT_TYPE,               -- Account Type
-    st.TASK_ENDED,                 -- Date of Install
-    st.TASK_STARTED,               -- Install Start Time (for duration calculations)
+    st.TASK_ENDED,                 -- Date of Install (latest task ended date)
+    st.TASK_STARTED,               -- Install Start Time (from latest task, for duration calculations)
     
     -- Address Information
     sa.SERVICELINE_ADDRESS1,
@@ -45,14 +45,35 @@ SELECT DISTINCT
     -- Additional Context (minimal, for filtering/grouping)
     so.STATUS,                     -- Should always be 'COMPLETED' due to filter
     so.SERVICEORDER_TYPE,          -- Service order type for grouping
-    so.SERVICELINE_NUMBER,         -- Service line identifier
-    sa.SERVICE_MODEL               -- Service model type (filtered to 'INTERNET')
+    sa.SERVICE_MODEL,              -- Service model type (filtered to 'INTERNET')
+    st.TASK_NAME                   -- Should always be 'TECHNICIAN VISIT' due to filter
 
-FROM CAMVIO.PUBLIC.SERVICEORDERS so
-
--- Required: Get technician and install date
-INNER JOIN CAMVIO.PUBLIC.SERVICEORDER_TASKS st 
-    ON so.SERVICEORDER_ID = st.SERVICEORDER_ID
+FROM (
+    -- Subquery to get the latest task per order
+    SELECT 
+        so.ORDER_ID,
+        so.SERVICEORDER_ID,
+        so.ACCOUNT_ID,
+        so.STATUS,
+        so.SERVICEORDER_TYPE,
+        so.SERVICELINE_NUMBER,
+        st.ASSIGNEE,
+        st.TASK_ENDED,
+        st.TASK_STARTED,
+        st.TASK_NAME,
+        ROW_NUMBER() OVER (
+            PARTITION BY so.ORDER_ID 
+            ORDER BY st.TASK_ENDED DESC NULLS LAST
+        ) as rn
+    FROM CAMVIO.PUBLIC.SERVICEORDERS so
+    INNER JOIN CAMVIO.PUBLIC.SERVICEORDER_TASKS st 
+        ON so.SERVICEORDER_ID = st.SERVICEORDER_ID
+    WHERE UPPER(st.TASK_NAME) = 'TECHNICIAN VISIT'
+        AND UPPER(so.STATUS) = 'COMPLETED'
+        AND st.TASK_ENDED IS NOT NULL
+) so
+INNER JOIN CAMVIO.PUBLIC.SERVICEORDERS so_main
+    ON so.ORDER_ID = so_main.ORDER_ID
 
 -- Required: Get account type
 INNER JOIN CAMVIO.PUBLIC.CUSTOMER_ACCOUNTS ca 
@@ -62,9 +83,7 @@ INNER JOIN CAMVIO.PUBLIC.CUSTOMER_ACCOUNTS ca
 INNER JOIN CAMVIO.PUBLIC.SERVICELINE_ADDRESSES sa
     ON so.SERVICELINE_NUMBER = sa.SERVICELINE_NUMBER
 
-WHERE UPPER(st.TASK_NAME) = 'TECHNICIAN VISIT'
-    AND UPPER(so.STATUS) = 'COMPLETED'
-    AND st.TASK_ENDED IS NOT NULL  -- Ensure install date exists
+WHERE so.rn = 1  -- Only get the row with the latest TASK_ENDED per ORDER_ID
     AND UPPER(sa.SERVICE_MODEL) = 'INTERNET';  -- Filter for Internet service only
 
 -- ============================================================================
@@ -87,22 +106,26 @@ WHERE UPPER(st.TASK_NAME) = 'TECHNICIAN VISIT'
 --    - Focuses on specific service type
 --    - Changed SERVICELINE_ADDRESSES to INNER JOIN (required for filter)
 --
--- 5. Added DISTINCT on ORDER_ID - ensures one row per order
---    - Prevents duplicate orders in results
---    - If multiple tasks/addresses exist, picks one (deterministic based on data)
+-- 5. Uses ROW_NUMBER() window function - ensures one row per ORDER_ID
+--    - Gets the latest TASK_ENDED date per ORDER_ID
+--    - If multiple tasks exist, picks the one with the most recent TASK_ENDED
+--    - Guarantees deterministic results (one row per ORDER_ID)
+--
+-- 6. Removed SERVICELINE_NUMBER field - not needed in final output
 --
 -- 6. Kept essential fields only - reduces data transfer and processing
 --
 -- Performance Benefits:
 -- - Fewer JOINs = faster query execution
 -- - Less data transferred = faster results
--- - DISTINCT ensures unique ORDER_IDs
+-- - Window function ensures one row per ORDER_ID with latest TASK_ENDED
 -- - INNER JOIN on addresses ensures SERVICE_MODEL filter works correctly
 --
--- Note on DISTINCT:
--- - If multiple rows exist for same ORDER_ID (e.g., multiple tasks or addresses),
---   DISTINCT will return one row per unique combination of all selected columns
--- - To ensure deterministic results, consider adding ORDER BY if needed
+-- Note on ROW_NUMBER():
+-- - Uses window function to get the latest TASK_ENDED per ORDER_ID
+-- - If multiple tasks exist for same ORDER_ID, returns the one with latest TASK_ENDED
+-- - Guarantees exactly one row per ORDER_ID (deterministic)
+-- - All fields (ASSIGNEE, TASK_STARTED, etc.) come from the row with latest TASK_ENDED
 --
 -- If you need appointment or feature data later:
 -- - Use the original query (installs_by_individual.sql)
