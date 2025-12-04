@@ -4,67 +4,69 @@
 
 Semantic types in Metabase help the system understand what kind of data each column contains, enabling better visualizations, filtering, and data exploration. This document specifies the recommended semantic types for each column in the **Installs by Individual (Base)** model.
 
+**Column Mapping**: See [`INSTALLS_BY_INDIVIDUAL_COLUMN_MAPPING.md`](./INSTALLS_BY_INDIVIDUAL_COLUMN_MAPPING.md) for database column mappings.
+
 ## Column Semantic Types
 
 ### Service Order Fields
 
-| Column Name | Semantic Type | Description | Notes |
-|------------|---------------|-------------|-------|
-| `ORDER_ID` | **Entity Key** | Order identifier | Primary key for orders (different from SERVICEORDER_ID) |
-| `SERVICEORDER_ID` | **Entity Key** | Service order identifier | Primary key for service orders, joins to Fybe WORK_PACKAGE |
-| `SERVICEORDER_TYPE` | **Category** | Type of service order | Categorical field for grouping/filtering |
-| `STATUS` | **Category** | Service order status | Should be filtered to 'COMPLETED' in base query |
+| Column Name | Database Column | Semantic Type | Description | Notes |
+|------------|-----------------|---------------|-------------|-------|
+| `ORDER_ID` | `so.ORDER_ID` | **Entity Key** | Order identifier | Primary key for orders (different from SERVICEORDER_ID) |
+| `SERVICEORDER_ID` | `so.SERVICEORDER_ID` | **Entity Key** | Service order identifier | Primary key for service orders, joins to Fybe WORK_PACKAGE |
+| `SERVICEORDER_TYPE` | `so.SERVICEORDER_TYPE` | **Category** | Type of service order | Categorical field for grouping/filtering |
+| `STATUS` | `so.STATUS` | **Category** | Service order status | Should be filtered to 'COMPLETED' in base query |
 
 ### Account Fields
 
-| Column Name | Semantic Type | Description | Notes |
-|------------|---------------|-------------|-------|
-| `ACCOUNT_ID` | **Entity Key** | Customer account identifier | Primary key for customer accounts |
-| `ACCOUNT_TYPE` | **Category** | Type of customer account | Categorical field (e.g., Residential, Business) |
+| Column Name | Database Column | Semantic Type | Description | Notes |
+|------------|-----------------|---------------|-------------|-------|
+| `ACCOUNT_ID` | `so.ACCOUNT_ID` | **Entity Key** | Customer account identifier | Primary key for customer accounts |
+| `ACCOUNT_TYPE` | `ca.ACCOUNT_TYPE` | **Category** | Type of customer account | Categorical field (e.g., Residential, Business) |
 
 ### Service Line Fields
 
-| Column Name | Semantic Type | Description | Notes |
-|------------|---------------|-------------|-------|
-| `SERVICELINE_NUMBER` | **Entity Key** | Service line identifier | Primary key for service lines |
+| Column Name | Database Column | Semantic Type | Description | Notes |
+|------------|-----------------|---------------|-------------|-------|
+| `SERVICELINE_NUMBER` | `so.SERVICELINE_NUMBER` | **Entity Key** | Service line identifier | Primary key for service lines |
 
 ### Task Fields
 
-| Column Name | Semantic Type | Description | Notes |
-|------------|---------------|-------------|-------|
-| `TASK_NAME` | **Category** | Name of the task | Should be 'TECHNICIAN VISIT' in base query |
-| `TASK_STARTED` | **Creation Timestamp** | When the task started | Use for duration calculations |
-| `TASK_ENDED` | **Creation Timestamp** | When the task ended | Use for duration calculations and completion tracking |
-| `ASSIGNEE` | **Entity Name** | Technician/individual who completed the install | **Key field** for grouping by individual |
+| Column Name | Database Column | Semantic Type | Description | Notes |
+|------------|-----------------|---------------|-------------|-------|
+| `TASK_NAME` | `st.TASK_NAME` | **Category** | Name of the task | Should be 'TECHNICIAN VISIT' in base query |
+| `TASK_STARTED` | `st.TASK_STARTED` | **Creation Timestamp** | When the task started | Use for duration calculations |
+| `TASK_ENDED` | `st.TASK_ENDED` | **Creation Timestamp** | When the task ended | Use for duration calculations and completion tracking |
+| `ASSIGNEE` | `st.ASSIGNEE` | **Entity Name** | Technician/individual who completed the install | **Key field** for grouping by individual |
 
 ### Appointment Fields
 
-| Column Name | Semantic Type | Description | Notes |
-|------------|---------------|-------------|-------|
-| `APPOINTMENT_ID` | **Entity Key** | Appointment identifier | Primary key for appointments |
-| `APPOINTMENT_TYPE` | **Category** | Type of appointment | Categorical field |
-| `APPOINTMENT_TYPE_DESCRIPTION` | **Description** | Description of appointment type | Text description field |
-| `APPOINTMENT_DATE` | **Creation Timestamp** | Scheduled appointment date | Use for comparing with TASK_ENDED |
+| Column Name | Database Column | Semantic Type | Description | Notes |
+|------------|-----------------|---------------|-------------|-------|
+| `APPOINTMENT_ID` | `a.APPOINTMENT_ID` | **Entity Key** | Appointment identifier | Primary key for appointments |
+| `APPOINTMENT_TYPE` | `a.APPOINTMENT_TYPE` | **Category** | Type of appointment | Categorical field |
+| `APPOINTMENT_TYPE_DESCRIPTION` | `a.APPOINTMENT_TYPE_DESCRIPTION` | **Description** | Description of appointment type | Text description field |
+| `APPOINTMENT_DATE` | `a.APPOINTMENT_DATE` | **Creation Timestamp** | Scheduled appointment date | Use for comparing with TASK_ENDED |
 
 ### Service Line Feature Fields
 
-| Column Name | Semantic Type | Description | Notes |
-|------------|---------------|-------------|-------|
-| `FEATURE` | **Category** | Feature name | Categorical field for grouping features |
-| `FEATURE_PRICE` | **Currency** | Price of the feature | Use for financial calculations |
-| `QTY` | **Quantity** | Quantity of features | Use for quantity calculations |
-| `PLAN` | **Category** | Service plan name | Categorical field |
+| Column Name | Database Column | Semantic Type | Description | Notes |
+|------------|-----------------|---------------|-------------|-------|
+| `FEATURE` | `sf.FEATURE` | **Category** | Feature name | Categorical field for grouping features |
+| `FEATURE_PRICE` | `sf.FEATURE_PRICE` | **Currency** | Price of the feature | Use for financial calculations |
+| `QTY` | `sf.QTY` | **Quantity** | Quantity of features | Use for quantity calculations |
+| `PLAN` | `sf.PLAN` | **Category** | Service plan name | Categorical field |
 
 ### Address Fields
 
-| Column Name | Semantic Type | Description | Notes |
-|------------|---------------|-------------|-------|
-| `SERVICE_MODEL` | **Category** | Service model type | Categorical field |
-| `SERVICELINE_ADDRESS1` | **Address** | Primary address line | Part of full address |
-| `SERVICELINE_ADDRESS2` | **Address** | Secondary address line | Part of full address |
-| `SERVICELINE_ADDRESS_CITY` | **City** | City name | Use for geographic grouping |
-| `SERVICELINE_ADDRESS_STATE` | **State** | State abbreviation or name | **Key field** for geographic filtering |
-| `SERVICELINE_ADDRESS_ZIPCODE` | **ZIP Code** | ZIP/postal code | Use for geographic grouping |
+| Column Name | Database Column | Semantic Type | Description | Notes |
+|------------|-----------------|---------------|-------------|-------|
+| `SERVICE_MODEL` | `sa.SERVICE_MODEL` | **Category** | Service model type | Categorical field |
+| `SERVICELINE_ADDRESS1` | `sa.SERVICELINE_ADDRESS1` | **Address** | Primary address line | Part of full address |
+| `SERVICELINE_ADDRESS2` | `sa.SERVICELINE_ADDRESS2` | **Address** | Secondary address line | Part of full address |
+| `SERVICELINE_ADDRESS_CITY` | `sa.SERVICELINE_ADDRESS_CITY` | **City** | City name | Use for geographic grouping |
+| `SERVICELINE_ADDRESS_STATE` | `sa.SERVICELINE_ADDRESS_STATE` | **State** | State abbreviation or name | **Key field** for geographic filtering |
+| `SERVICELINE_ADDRESS_ZIPCODE` | `sa.SERVICELINE_ADDRESS_ZIPCODE` | **ZIP Code** | ZIP/postal code | Use for geographic grouping |
 
 ## Semantic Type Categories Reference
 
