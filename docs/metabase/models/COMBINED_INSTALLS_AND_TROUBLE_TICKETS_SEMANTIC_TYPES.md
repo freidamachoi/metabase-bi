@@ -12,6 +12,7 @@ This document provides a quick reference for setting semantic types in Metabase 
 |------------|----------------------------|----------------------------------|---------------|----------|
 | `VISIT_TYPE` | Literal: 'Install' | Literal: 'Trouble Ticket' | **Category** | ⭐ **HIGH** |
 | `VISIT_ID` | `SERVICEORDERS.ORDER_ID` | NULL | **Entity Key** | ⭐ **HIGH** |
+| `ORDER_ID` | `SERVICEORDERS.ORDER_ID` | NULL | **Entity Key** | Medium |
 | `SERVICEORDER_ID` | `SERVICEORDERS.SERVICEORDER_ID` | NULL | **Entity Key** | Medium |
 | `TROUBLE_TICKET_ID` | NULL | `TROUBLE_TICKETS.TROUBLE_TICKET_ID` | **Entity Key** | ⭐ **HIGH** |
 | `ACCOUNT_ID` | `SERVICEORDERS.ACCOUNT_ID` | `TROUBLE_TICKETS.ACCOUNT_ID` | **Entity Key** | Medium |
@@ -47,6 +48,7 @@ This document provides a quick reference for setting semantic types in Metabase 
 
 ```
 CAMVIO.PUBLIC.SERVICEORDERS.ORDER_ID → VISIT_ID
+CAMVIO.PUBLIC.SERVICEORDERS.ORDER_ID → ORDER_ID
 CAMVIO.PUBLIC.SERVICEORDERS.SERVICEORDER_ID → SERVICEORDER_ID
 CAMVIO.PUBLIC.SERVICEORDERS.ACCOUNT_ID → ACCOUNT_ID
 CAMVIO.PUBLIC.SERVICEORDERS.STATUS → STATUS (and TROUBLE_TICKET_STATUS for installs)
@@ -108,6 +110,7 @@ CAMVIO.PUBLIC.SERVICELINE_ADDRESSES.SERVICE_MODEL → SERVICE_MODEL
 - [ ] Set `TASK_ENDED` → **Creation Timestamp**
 - [ ] Set `ACCOUNT_TYPE` → **Category**
 - [ ] Set `VISIT_ID` → **Entity Key**
+- [ ] Set `ORDER_ID` → **Entity Key**
 - [ ] Set `TROUBLE_TICKET_ID` → **Entity Key**
 - [ ] Set `SERVICEORDER_ID` → **Entity Key**
 - [ ] Set `ACCOUNT_ID` → **Entity Key**
