@@ -188,6 +188,40 @@ WHERE [Assignee] IS NOT NULL
 ORDER BY [Assignee];
 ```
 
+### Order/Trouble Ticket #
+
+**Purpose**: Create a unified identifier field that contains ORDER_ID for installs and TROUBLE_TICKET_ID for trouble tickets
+
+**Business Logic**: Uses ORDER_ID when available (installs), otherwise uses TROUBLE_TICKET_ID (trouble tickets). Since one is always NULL and the other has a value, this creates a single field for the primary identifier.
+
+**Metabase Expression**:
+
+```javascript
+coalesce([Order Id], [Trouble Ticket Id])
+```
+
+**Alternative with Formatting** (if you want to prefix the values):
+
+```javascript
+coalesce(
+  case(
+    [Order Id] IS NOT NULL,
+    concat("Order: ", [Order Id]),
+    [Trouble Ticket Id] IS NOT NULL,
+    concat("Ticket: ", [Trouble Ticket Id])
+  ),
+  "Unknown"
+)
+```
+
+**Semantic Type**: **Entity Key** or **Number** (depending on whether you want it formatted as text)
+
+**Notes**:
+- **Simple Version**: The basic `coalesce()` expression is recommended - it returns the non-NULL value directly
+- **Formatting Version**: Use the alternative if you want to distinguish between orders and tickets in the display value
+- **Data Type**: ORDER_ID and TROUBLE_TICKET_ID are both numbers, so the result will be a number
+- **Always Has Value**: Since one field is always NULL and the other always has a value, this field will never be NULL (unless both are somehow NULL, which shouldn't happen)
+
 ## Additional Custom Columns (Future)
 
 ### Total Revenue
@@ -251,6 +285,9 @@ case(
    - Add custom column: "Partner"
      - Paste the Partner expression above (update with actual ASSIGNEE → Partner mappings)
      - Set semantic type to **Category**
+   - Add custom column: "Order/Trouble Ticket #"
+     - Paste the coalesce expression: `coalesce([Order Id], [Trouble Ticket Id])`
+     - Set semantic type to **Entity Key** or **Number**
 
 ## Testing the Rate Column
 
