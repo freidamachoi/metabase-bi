@@ -22,10 +22,10 @@ SELECT
     'Install' AS VISIT_TYPE,
     
     -- Identifiers (Install uses ORDER_ID as primary)
-    so.ORDER_ID AS VISIT_ID,                    -- Primary identifier for installs
-    so.SERVICEORDER_ID,
+    latest.ORDER_ID AS VISIT_ID,                -- Primary identifier for installs
+    latest.SERVICEORDER_ID,
     CAST(NULL AS NUMBER) AS TROUBLE_TICKET_ID,  -- NULL for installs
-    so.ACCOUNT_ID,
+    latest.ACCOUNT_ID,
     
     -- Core Requirements
     latest.ASSIGNEE,                            -- Technician/Individual
@@ -40,9 +40,9 @@ SELECT
     sa.SERVICELINE_ADDRESS_ZIPCODE,
     
     -- Additional Context
-    so.STATUS,                                 -- Service order status
+    latest.STATUS,                             -- Service order status
     CAST(NULL AS TEXT) AS TROUBLE_TICKET_STATUS, -- NULL for installs
-    so.SERVICEORDER_TYPE,                      -- Service order type
+    latest.SERVICEORDER_TYPE,                  -- Service order type
     sa.SERVICE_MODEL,                         -- Service model (should be 'INTERNET')
     latest.TASK_NAME                           -- Task name
 
