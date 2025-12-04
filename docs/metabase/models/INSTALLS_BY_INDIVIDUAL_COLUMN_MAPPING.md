@@ -4,6 +4,8 @@
 
 This document maps each column in the **Installs by Individual (Base)** Metabase model to its corresponding database column in the Camvio Snowflake instance.
 
+**For complete join column reference**: See [`INSTALLS_BY_INDIVIDUAL_JOIN_COLUMNS.md`](./INSTALLS_BY_INDIVIDUAL_JOIN_COLUMNS.md) which lists all columns from all joined tables, including join keys that exist in multiple tables.
+
 ## Column Mapping Table
 
 **Note**: Column names in the model will appear without table prefixes (e.g., `SERVICEORDER_ID` not `so.SERVICEORDER_ID`). The "Database Column" column shows the table alias used in the SQL SELECT statement to disambiguate which table the column comes from.
