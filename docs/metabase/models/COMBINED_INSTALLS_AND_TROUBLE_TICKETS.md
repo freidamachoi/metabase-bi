@@ -162,6 +162,10 @@ case(
 
 ## Semantic Types
 
+**For complete semantic types and column mapping**: See:
+- [`COMBINED_INSTALLS_AND_TROUBLE_TICKETS_COLUMN_MAPPING.md`](./COMBINED_INSTALLS_AND_TROUBLE_TICKETS_COLUMN_MAPPING.md) - Detailed database column mappings
+- [`COMBINED_INSTALLS_AND_TROUBLE_TICKETS_SEMANTIC_TYPES.md`](./COMBINED_INSTALLS_AND_TROUBLE_TICKETS_SEMANTIC_TYPES.md) - Quick semantic types reference
+
 | Field | Semantic Type | Notes |
 |-------|---------------|-------|
 | `VISIT_TYPE` | Category | 'Install' or 'Trouble Ticket' |
