@@ -178,131 +178,195 @@ To discover the structure of the Camvio database, run the queries in [`DISCOVERY
 
 ## Join Strategy with Fybe Data
 
-### ⚠️ Important Note: Different Data Models
+### ✅ Primary Join Key (CONFIRMED)
 
-**Camvio** uses an **account-centric** model (ACCOUNT_ID as primary identifier)  
-**Fybe** uses a **project/asset/task-centric** model (PROJECT_ID, ASSET_ID, TASK_ID)
+**The ONLY join point between Fybe (Render) and Camvio data:**
 
-**Direct joins are NOT straightforward** - we'll need to identify mapping strategies.
+| Fybe View | Fybe Field | Camvio Table | Camvio Field | Join Type | Data Types |
+|-----------|------------|--------------|--------------|-----------|------------|
+| `VW_RENDER_TICKETS` | `WORK_PACKAGE` | `SERVICEORDERS` | `ORDER_ID` | Inner/Left | Fybe: TEXT/VARCHAR, Camvio: NUMBER |
+| `VW_RENDER_UNITS` | `WORK_PACKAGE` | `SERVICEORDERS` | `ORDER_ID` | Inner/Left | Fybe: TEXT/VARCHAR, Camvio: NUMBER |
 
-### Potential Join Strategies
+**Join Logic:**
+```sql
+-- In Metabase (example)
+SELECT 
+  f.*,
+  c.*
+FROM fybe_view f
+LEFT JOIN camvio.SERVICEORDERS c
+  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.ORDER_ID
+```
 
-#### Strategy 1: Task ID Matching (Most Promising)
-| Camvio Table | Camvio Field | Fybe View | Fybe Field | Join Type | Validation Needed |
-|-------------|--------------|-----------|------------|-----------|-------------------|
-| `SERVICEORDER_TASKS` | `TASK_ID` (NUMBER) | `VW_RENDER_TICKETS` | `TASK_ID` | Inner/Left | ✅ **REQUIRES VALIDATION** - Check if TASK_ID values overlap |
-| `TROUBLE_TICKET_TASKS` | `TASK_ID` (NUMBER) | `VW_RENDER_TICKETS` | `TASK_ID` | Inner/Left | ✅ **REQUIRES VALIDATION** - Check if TASK_ID values overlap |
+**Important Notes:**
+- ⚠️ **Data Type Conversion**: Fybe `WORK_PACKAGE` is TEXT/VARCHAR, Camvio `ORDER_ID` is NUMBER - may need CAST/CONVERT
+- ⚠️ **TASK_IDs are NOT related**: TASK_ID values are platform-specific and have no relationship between systems
+- ✅ **This is the ONLY join point** - all other fields (TASK_ID, ASSET_ID, PROJECT_ID, etc.) are independent
 
-**Action Required**: 
-- Sample both TASK_ID fields to see if there's overlap
-- Check data types match (Camvio: NUMBER, Fybe: likely TEXT or NUMBER)
-- Validate if these represent the same task system
+### Related Tables for Enrichment
 
-#### Strategy 2: Address/Asset Matching
-| Camvio Table | Camvio Field | Fybe View | Fybe Field | Join Type | Validation Needed |
-|-------------|--------------|-----------|------------|-----------|-------------------|
-| `SERVICELINE_ADDRESSES` | `MAPPING_ADDRESS_ID` (TEXT) | `VW_RENDER_UNITS` | `STREET_ADDRESS` or `ASSET_ID` | Fuzzy/Text Match | ⚠️ **COMPLEX** - May require address normalization |
-| `SERVICELINE_ADDRESSES` | `MAPPING_AREA_ID` (TEXT) | `VW_RENDER_TICKETS` | `PROJECT_ID` | Text Match | ⚠️ **REQUIRES VALIDATION** |
-| `SERVICEORDER_ADDRESSES` | `MAPPING_ADDRESS_ID` (TEXT) | `VW_RENDER_UNITS` | `STREET_ADDRESS` or `ASSET_ID` | Fuzzy/Text Match | ⚠️ **COMPLEX** |
+Once joined on `ORDER_ID`, you can enrich with related Camvio tables:
 
-**Action Required**:
-- Compare MAPPING_ADDRESS_ID with Fybe STREET_ADDRESS or ASSET_ID
-- Check if MAPPING_AREA_ID relates to Fybe PROJECT_ID
-- May need address standardization/normalization
-
-#### Strategy 3: Account to Project Mapping (If Available)
-If there's a mapping table or field that links ACCOUNT_ID to PROJECT_ID, this would be ideal. **Currently not identified** - may need to request from Camvio team.
+| Camvio Table | Join Key | Purpose |
+|-------------|----------|---------|
+| `SERVICEORDER_TASKS` | `SERVICEORDER_ID` or `ORDER_ID` | Task-level details for the service order |
+| `SERVICEORDER_ADDRESSES` | `ORDER_ID` or `SERVICEORDER_ID` | Address information for the service order |
+| `SERVICEORDER_FEATURES` | `ORDER_ID` or `SERVICEORDER_ID` | Features associated with the service order |
+| `SERVICEORDER_NOTES` | `ORDER_ID` or `SERVICEORDER_ID` | Notes and comments for the service order |
 
 ### Common Join Keys Summary
 
-| Camvio Field | Fybe Field | Join Type | Confidence | Notes |
-|-------------|------------|-----------|------------|-------|
-| `SERVICEORDER_TASKS.TASK_ID` | `VW_RENDER_TICKETS.TASK_ID` | Inner/Left | ⚠️ **LOW** | Requires validation - different systems may use different ID schemes |
-| `TROUBLE_TICKET_TASKS.TASK_ID` | `VW_RENDER_TICKETS.TASK_ID` | Inner/Left | ⚠️ **LOW** | Requires validation |
-| `SERVICELINE_ADDRESSES.MAPPING_ADDRESS_ID` | `VW_RENDER_UNITS.STREET_ADDRESS` | Fuzzy Match | ⚠️ **MEDIUM** | May require address normalization |
-| `SERVICELINE_ADDRESSES.MAPPING_AREA_ID` | `VW_RENDER_TICKETS.PROJECT_ID` | Text Match | ⚠️ **LOW** | Requires validation |
-| `SERVICEORDER_ADDRESSES.MAPPING_ADDRESS_ID` | `VW_RENDER_UNITS.STREET_ADDRESS` | Fuzzy Match | ⚠️ **MEDIUM** | May require address normalization |
+| Camvio Field | Fybe Field | Join Type | Status | Notes |
+|-------------|------------|-----------|--------|-------|
+| `SERVICEORDERS.ORDER_ID` | `VW_RENDER_TICKETS.WORK_PACKAGE` | Inner/Left | ✅ **CONFIRMED** | Primary join - may need type conversion |
+| `SERVICEORDERS.ORDER_ID` | `VW_RENDER_UNITS.WORK_PACKAGE` | Inner/Left | ✅ **CONFIRMED** | Primary join - may need type conversion |
+| `SERVICEORDER_TASKS.TASK_ID` | `VW_RENDER_TICKETS.TASK_ID` | ❌ **NO RELATIONSHIP** | ❌ **INVALID** | TASK_IDs are platform-specific, not related |
+| `TROUBLE_TICKET_TASKS.TASK_ID` | `VW_RENDER_TICKETS.TASK_ID` | ❌ **NO RELATIONSHIP** | ❌ **INVALID** | TASK_IDs are platform-specific, not related |
 
 ### Recommended Metabase Models
 
-1. **Camvio Tasks + Fybe Tasks** (if TASK_ID matches):
-   - Combines: `SERVICEORDER_TASKS` + `TROUBLE_TICKET_TASKS` + `VW_RENDER_TICKETS`
-   - Join on: `TASK_ID`
-   - Purpose: Unified view of all tasks across both systems
-   - **Status**: ⚠️ Requires TASK_ID validation first
+1. **Fybe Render Tickets + Camvio Service Orders** (PRIMARY MODEL):
+   - **Base**: `VW_RENDER_TICKETS` (Fybe)
+   - **Join**: `SERVICEORDERS` (Camvio) on `WORK_PACKAGE` = `ORDER_ID`
+   - **Enrichment**: 
+     - `SERVICEORDER_TASKS` on `ORDER_ID`
+     - `SERVICEORDER_ADDRESSES` on `ORDER_ID`
+     - `SERVICEORDER_NOTES` on `ORDER_ID`
+   - **Purpose**: Link Fybe render tickets to Camvio service order details
+   - **Status**: ✅ **READY TO CREATE** - Join key confirmed
 
-2. **Camvio Service Orders + Fybe Render Tickets** (if address/area matches):
-   - Combines: `SERVICEORDERS` + `VW_RENDER_TICKETS`
-   - Join on: `MAPPING_AREA_ID` = `PROJECT_ID` (or address matching)
-   - Purpose: Link service orders to Fybe project work
-   - **Status**: ⚠️ Requires address/area validation first
+2. **Fybe Render Units + Camvio Service Orders**:
+   - **Base**: `VW_RENDER_UNITS` (Fybe)
+   - **Join**: `SERVICEORDERS` (Camvio) on `WORK_PACKAGE` = `ORDER_ID`
+   - **Enrichment**: 
+     - `SERVICEORDER_TASKS` on `ORDER_ID`
+     - `SERVICEORDER_ADDRESSES` on `ORDER_ID`
+   - **Purpose**: Link Fybe render units to Camvio service order details
+   - **Status**: ✅ **READY TO CREATE** - Join key confirmed
 
-3. **Camvio Service Lines + Fybe Render Units** (address-based):
-   - Combines: `SERVICELINES` + `SERVICELINE_ADDRESSES` + `VW_RENDER_UNITS`
-   - Join on: Address matching (fuzzy or normalized)
-   - Purpose: Link active services to Fybe asset/work data
-   - **Status**: ⚠️ Requires address normalization strategy
+3. **Unified Service Order View**:
+   - **Base**: `SERVICEORDERS` (Camvio)
+   - **Join**: `VW_RENDER_TICKETS` and `VW_RENDER_UNITS` (Fybe) on `ORDER_ID` = `WORK_PACKAGE`
+   - **Purpose**: Camvio-centric view with Fybe work details
+   - **Status**: ✅ **READY TO CREATE** - Join key confirmed
 
 ## Sample Queries
 
-### Example 1: Validate TASK_ID Overlap
+### Example 1: Validate WORK_PACKAGE to ORDER_ID Join
 
-Check if Camvio TASK_ID values overlap with Fybe TASK_ID:
+Check overlap between Fybe WORK_PACKAGE and Camvio ORDER_ID:
 
 ```sql
--- In Camvio Snowflake
-SELECT 
-  'SERVICEORDER_TASKS' as source,
-  TASK_ID,
-  COUNT(*) as count
-FROM PUBLIC.SERVICEORDER_TASKS
-WHERE TASK_ID IS NOT NULL
-GROUP BY TASK_ID
-ORDER BY count DESC
-LIMIT 100;
-
--- In Fybe Snowflake (compare with)
+-- In Fybe Snowflake - Sample WORK_PACKAGE values
 SELECT 
   'VW_RENDER_TICKETS' as source,
-  TASK_ID,
-  COUNT(*) as count
+  WORK_PACKAGE,
+  COUNT(*) as ticket_count,
+  COUNT(DISTINCT TASK_ID) as distinct_tasks
 FROM DATA_LAKE.ANALYTICS.VW_RENDER_TICKETS
-WHERE TASK_ID IS NOT NULL
-GROUP BY TASK_ID
-ORDER BY count DESC
+WHERE WORK_PACKAGE IS NOT NULL
+GROUP BY WORK_PACKAGE
+ORDER BY ticket_count DESC
+LIMIT 100;
+
+-- In Camvio Snowflake - Sample ORDER_ID values
+SELECT 
+  'SERVICEORDERS' as source,
+  ORDER_ID,
+  COUNT(*) as order_count,
+  COUNT(DISTINCT SERVICEORDER_ID) as distinct_serviceorders
+FROM PUBLIC.SERVICEORDERS
+WHERE ORDER_ID IS NOT NULL
+GROUP BY ORDER_ID
+ORDER BY order_count DESC
 LIMIT 100;
 ```
 
-### Example 2: Sample Address Data for Matching
+### Example 2: Fybe Render Tickets + Camvio Service Orders (Metabase Model)
 
 ```sql
--- Camvio addresses
+-- This would be the base query for a Metabase model
 SELECT 
-  MAPPING_ADDRESS_ID,
-  MAPPING_AREA_ID,
-  ACCOUNT_ID,
-  COUNT(*) as service_count
-FROM PUBLIC.SERVICELINE_ADDRESSES
-WHERE MAPPING_ADDRESS_ID IS NOT NULL
-GROUP BY MAPPING_ADDRESS_ID, MAPPING_AREA_ID, ACCOUNT_ID
-LIMIT 100;
+  -- Fybe fields
+  f.TASK_ID as fybe_task_id,
+  f.PROJECT_ID,
+  f.TASK,
+  f.STATUS as fybe_status,
+  f.WORK_PACKAGE,
+  f.STREET_ADDRESS as fybe_address,
+  f.DATE_RELEASED,
+  f.DATE_COMPLETED,
+  f.CONTRACTOR as fybe_contractor,
+  
+  -- Camvio fields
+  c.ORDER_ID,
+  c.SERVICEORDER_ID,
+  c.STATUS as camvio_order_status,
+  c.ACCOUNT_ID,
+  c.ACCOUNT_NUMBER,
+  c.CREATED_DATETIME as camvio_created,
+  c.MODIFIED_DATETIME as camvio_modified,
+  c.SERVICEORDER_TYPE,
+  c.SOURCE
+  
+FROM DATA_LAKE.ANALYTICS.VW_RENDER_TICKETS f
+LEFT JOIN PUBLIC.SERVICEORDERS c
+  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.ORDER_ID
+WHERE f.WORK_PACKAGE IS NOT NULL;
 ```
 
-### Example 3: Service Order Tasks with Dates
+### Example 3: Enriched View with Service Order Tasks
 
 ```sql
+-- Fybe tickets with Camvio service order and task details
 SELECT 
-  sot.TASK_ID,
+  f.WORK_PACKAGE,
+  f.TASK_ID as fybe_task_id,
+  f.PROJECT_ID,
+  f.STATUS as fybe_status,
+  
+  c.ORDER_ID,
+  c.SERVICEORDER_ID,
+  c.STATUS as camvio_order_status,
+  
+  sot.TASK_ID as camvio_task_id,
   sot.TASK_NAME,
   sot.TASK_STARTED,
   sot.TASK_ENDED,
-  so.STATUS as order_status,
-  so.ACCOUNT_ID
-FROM PUBLIC.SERVICEORDER_TASKS sot
-LEFT JOIN PUBLIC.SERVICEORDERS so
-  ON sot.SERVICEORDER_ID = so.SERVICEORDER_ID
-WHERE sot.TASK_STARTED >= CURRENT_DATE - INTERVAL '30 days'
-ORDER BY sot.TASK_STARTED DESC;
+  sot.ASSIGNEE
+  
+FROM DATA_LAKE.ANALYTICS.VW_RENDER_TICKETS f
+LEFT JOIN PUBLIC.SERVICEORDERS c
+  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.ORDER_ID
+LEFT JOIN PUBLIC.SERVICEORDER_TASKS sot
+  ON c.ORDER_ID = sot.ORDER_ID
+WHERE f.WORK_PACKAGE IS NOT NULL;
+```
+
+### Example 4: Check Data Type Compatibility
+
+```sql
+-- In Fybe - Check WORK_PACKAGE data types and formats
+SELECT 
+  WORK_PACKAGE,
+  TYPEOF(WORK_PACKAGE) as data_type,
+  COUNT(*) as count
+FROM DATA_LAKE.ANALYTICS.VW_RENDER_TICKETS
+WHERE WORK_PACKAGE IS NOT NULL
+GROUP BY WORK_PACKAGE, TYPEOF(WORK_PACKAGE)
+ORDER BY count DESC
+LIMIT 50;
+
+-- In Camvio - Check ORDER_ID format
+SELECT 
+  ORDER_ID,
+  TYPEOF(ORDER_ID) as data_type,
+  COUNT(*) as count
+FROM PUBLIC.SERVICEORDERS
+WHERE ORDER_ID IS NOT NULL
+GROUP BY ORDER_ID, TYPEOF(ORDER_ID)
+ORDER BY count DESC
+LIMIT 50;
 ```
 
 ## Data Quality Notes
@@ -331,28 +395,36 @@ ORDER BY sot.TASK_STARTED DESC;
 ## Next Steps
 
 1. ✅ **Document all accessible tables/views** - COMPLETE
-2. ✅ **Identify join keys with Fybe data** - COMPLETE (identified potential keys)
-3. ⚠️ **Validate TASK_ID overlap** - **ACTION REQUIRED**
-   - Sample TASK_ID values from both systems
-   - Check if they represent the same task system
-   - Validate data types match
-4. ⚠️ **Validate address/area matching** - **ACTION REQUIRED**
-   - Compare MAPPING_ADDRESS_ID with Fybe STREET_ADDRESS
-   - Check if MAPPING_AREA_ID relates to PROJECT_ID
-   - Develop address normalization strategy if needed
-5. ⚠️ **Request mapping table** - **RECOMMENDED**
-   - Ask Camvio team if there's an ACCOUNT_ID to PROJECT_ID mapping
-   - This would be the cleanest join strategy
-6. ⏳ **Create Metabase models combining both instances** - PENDING validation
-7. ⏳ **Test query performance** - PENDING model creation
-8. ⏳ **Document any custom columns needed for Camvio data** - PENDING model creation
+2. ✅ **Identify join keys with Fybe data** - COMPLETE
+   - **Primary Join**: `WORK_PACKAGE` (Fybe) = `ORDER_ID` (Camvio) ✅ **CONFIRMED**
+   - **TASK_ID**: Confirmed NO relationship between systems ✅
+3. ⚠️ **Validate WORK_PACKAGE to ORDER_ID join** - **ACTION REQUIRED**
+   - Sample WORK_PACKAGE values from Fybe
+   - Sample ORDER_ID values from Camvio
+   - Check data type compatibility (Fybe: TEXT/VARCHAR, Camvio: NUMBER)
+   - Verify join logic works (may need CAST/CONVERT)
+   - Check match rate (how many Fybe records have matching Camvio orders)
+4. ⏳ **Create Metabase models combining both instances** - **READY TO START**
+   - Model 1: Fybe Render Tickets + Camvio Service Orders
+   - Model 2: Fybe Render Units + Camvio Service Orders
+   - Model 3: Unified Service Order View
+5. ⏳ **Test query performance** - PENDING model creation
+6. ⏳ **Document any custom columns needed for Camvio data** - PENDING model creation
 
 ## Validation Queries to Run
 
 Before creating Metabase models, run these validation queries:
 
-1. **TASK_ID Overlap Check**: Compare TASK_ID values between Camvio and Fybe
-2. **Address Sample**: Get sample addresses from both systems to assess matching strategy
-3. **Data Type Check**: Verify TASK_ID data types match (NUMBER vs TEXT)
-4. **Record Count**: Check how many records would match under each join strategy
+1. **WORK_PACKAGE to ORDER_ID Match Rate**: 
+   - Count how many Fybe records have matching Camvio orders
+   - Identify any data quality issues (nulls, format mismatches)
+
+2. **Data Type Check**: 
+   - Verify WORK_PACKAGE format in Fybe (text vs number)
+   - Check if ORDER_ID in Camvio matches the format
+   - Test CAST/CONVERT logic
+
+3. **Sample Join Test**: 
+   - Run a sample join query to verify the logic works
+   - Check for any edge cases or data quality issues
 
