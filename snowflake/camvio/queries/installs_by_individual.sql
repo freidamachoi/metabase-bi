@@ -1,9 +1,19 @@
 -- ============================================================================
--- Installs by Individual (Completed)
+-- Installs by Individual (Completed) - BASE MODEL
 -- ============================================================================
 -- Source: Tableau query (transitioning to Metabase)
 -- Purpose: Get installs by individual technician who completed the install
 -- Filters: TECHNICIAN VISIT tasks on COMPLETED service orders
+-- 
+-- METABASE USAGE:
+-- This query should be used as a BASE MODEL in Metabase:
+-- 1. Create model: "Installs by Individual (Base)"
+-- 2. Use this SQL as the model query
+-- 3. Create enhanced model: "Installs by Individual (Enhanced)"
+-- 4. Base enhanced model on the base model
+-- 5. Add custom columns and calculations in the enhanced model
+-- 
+-- See: docs/metabase/models/INSTALLS_BY_INDIVIDUAL.md for details
 -- ============================================================================
 
 SELECT 
