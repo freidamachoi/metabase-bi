@@ -32,8 +32,7 @@ SELECT
     -- Core Requirements
     latest.ASSIGNEE,                    -- Technician/Individual (from latest task)
     ca.ACCOUNT_TYPE,                   -- Account Type
-    latest.TASK_ENDED,                 -- Date of Install (latest task ended date)
-    latest.TASK_STARTED,               -- Install Start Time (from latest task, for duration calculations)
+    latest.TASK_ENDED                  -- Date of Install (latest task ended date)
     
     -- Address Information
     sa.SERVICELINE_ADDRESS1,
@@ -59,7 +58,6 @@ FROM (
         so.SERVICELINE_NUMBER,
         st.ASSIGNEE,
         st.TASK_ENDED,
-        st.TASK_STARTED,
         st.TASK_NAME,
         ROW_NUMBER() OVER (
             PARTITION BY so.ORDER_ID 
@@ -124,7 +122,7 @@ WHERE latest.rn = 1;  -- Only get the row with the latest TASK_ENDED per ORDER_I
 -- - Uses window function to get the latest TASK_ENDED per ORDER_ID
 -- - If multiple tasks exist for same ORDER_ID, returns the one with latest TASK_ENDED
 -- - Guarantees exactly one row per ORDER_ID (deterministic)
--- - All fields (ASSIGNEE, TASK_STARTED, etc.) come from the row with latest TASK_ENDED
+-- - All fields (ASSIGNEE, etc.) come from the row with latest TASK_ENDED
 --
 -- If you need appointment or feature data later:
 -- - Use the original query (installs_by_individual.sql)
