@@ -7,11 +7,26 @@
 
 The Camvio Snowflake instance is **read-only** - we cannot create views, materialized views, or dynamic tables. All joins and transformations must be performed in Metabase.
 
+## Quick Start
+
+To discover the structure of the Camvio database, run the queries in [`DISCOVERY_QUERIES.sql`](./DISCOVERY_QUERIES.sql). 
+
+**Recommended order:**
+1. Start with **Query #15** (Quick Overview) to get a high-level view
+2. Run **Query #1** to see all available schemas
+3. Run **Query #2** to list all tables and views
+4. Run **Query #3** to see all columns
+5. Use **Queries #7-9** to find join keys, dates, and status fields
+6. Run **Query #10** (sample queries) for specific tables of interest
+
 ## Access Information
 
-- **Instance**: [Camvio Snowflake Instance Name]
+- **Instance**: CAMVIO-GOFYBE
+- **User**: TABLEAU_GOFYBE
+- **Schema**: PUBLIC
+- **Warehouse**: ANALYTICS_WH
 - **Access Level**: Read-only
-- **Connection**: [Metabase connection name/details]
+- **Connection**: Currently uses username/password
 
 ## Available Tables/Views
 
