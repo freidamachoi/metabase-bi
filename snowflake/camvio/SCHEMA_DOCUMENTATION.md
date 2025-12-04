@@ -399,20 +399,52 @@ LIMIT 50;
 
 1. ✅ **Document all accessible tables/views** - COMPLETE
 2. ✅ **Identify join keys with Fybe data** - COMPLETE
-   - **Primary Join**: `WORK_PACKAGE` (Fybe) = `ORDER_ID` (Camvio) ✅ **CONFIRMED**
+   - **Primary Join**: `WORK_PACKAGE` (Fybe) = `SERVICEORDER_ID` (Camvio) ✅ **CONFIRMED**
    - **TASK_ID**: Confirmed NO relationship between systems ✅
-3. ⚠️ **Validate WORK_PACKAGE to SERVICEORDER_ID join** - **ACTION REQUIRED**
+3. ✅ **Document existing Tableau queries** - COMPLETE
+   - Installs by Individual query documented (see "Existing Queries" section below)
+4. ⚠️ **Validate WORK_PACKAGE to SERVICEORDER_ID join** - **ACTION REQUIRED**
    - Sample WORK_PACKAGE values from Fybe
    - Sample SERVICEORDER_ID values from Camvio (NOT ORDER_ID - they are different)
    - Check data type compatibility (Fybe: TEXT/VARCHAR, Camvio: NUMBER)
    - Verify join logic works (may need CAST/CONVERT)
    - Check match rate (how many Fybe records have matching Camvio service orders)
-4. ⏳ **Create Metabase models combining both instances** - **READY TO START**
+5. ⏳ **Create Metabase models combining both instances** - **READY TO START**
    - Model 1: Fybe Render Tickets + Camvio Service Orders
    - Model 2: Fybe Render Units + Camvio Service Orders
    - Model 3: Unified Service Order View
-5. ⏳ **Test query performance** - PENDING model creation
-6. ⏳ **Document any custom columns needed for Camvio data** - PENDING model creation
+   - Model 4: Installs by Individual (enhanced with Fybe data)
+6. ⏳ **Test query performance** - PENDING model creation
+7. ⏳ **Document any custom columns needed for Camvio data** - PENDING model creation
+
+## Existing Queries (Tableau → Metabase Migration)
+
+### Installs by Individual (Completed)
+
+**Location**: `queries/installs_by_individual.sql`
+
+**Purpose**: Get installs by individual technician who completed the install
+
+**Key Features**:
+- Filters for `TECHNICIAN VISIT` tasks on `COMPLETED` service orders
+- Includes technician name (`ASSIGNEE`), task timing, appointment details
+- Includes service line features and address information
+- Currently Camvio-only (no Fybe join)
+
+**Enhanced Version**: `queries/installs_by_individual_with_fybe.sql`
+- Adds Fybe Render Tickets data via `WORK_PACKAGE` = `SERVICEORDER_ID` join
+- Includes Fybe project, task, and work activity information
+
+**Key Fields**:
+- `st.ASSIGNEE` - Technician/individual who completed the install
+- `st.TASK_ENDED` - When the technician visit was completed
+- `st.TASK_NAME` - Filtered to 'TECHNICIAN VISIT'
+- `so.STATUS` - Filtered to 'COMPLETED'
+
+**Query Structure**:
+- Main table: `SERVICEORDERS`
+- Joins: `SERVICEORDER_TASKS`, `CUSTOMER_ACCOUNTS`, `APPOINTMENTS`, `SERVICELINE_FEATURES`, `SERVICELINE_ADDRESSES`
+- Note: Uses `ORDER_ID` for APPOINTMENTS join (not `SERVICEORDER_ID`)
 
 ## Validation Queries to Run
 
