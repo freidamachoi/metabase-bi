@@ -40,11 +40,11 @@ SELECT
     CAST(sa.SERVICELINE_ADDRESS_ZIPCODE AS TEXT) AS SERVICELINE_ADDRESS_ZIPCODE,
     
     -- Additional Context
-    latest.STATUS,                             -- Service order status
-    CAST(NULL AS TEXT) AS TROUBLE_TICKET_STATUS, -- NULL for installs
-    latest.SERVICEORDER_TYPE,                  -- Service order type
+    latest.STATUS AS STATUS,                  -- Service order status (should be 'COMPLETED')
+    latest.STATUS AS TROUBLE_TICKET_STATUS,   -- Same as STATUS for installs (for consistency)
+    latest.SERVICEORDER_TYPE,                 -- Service order type
     sa.SERVICE_MODEL,                         -- Service model (should be 'INTERNET')
-    latest.TASK_NAME                           -- Task name
+    latest.TASK_NAME                          -- Task name
 
 FROM (
     -- Subquery to get the latest task per order (INSTALLS)
@@ -106,9 +106,9 @@ SELECT
     CAST(sa.SERVICELINE_ADDRESS_ZIPCODE AS TEXT) AS SERVICELINE_ADDRESS_ZIPCODE,
     
     -- Additional Context
-    CAST(NULL AS TEXT) AS STATUS,               -- NULL for trouble tickets
-    tt.STATUS AS TROUBLE_TICKET_STATUS,        -- Trouble ticket status
-    CAST(NULL AS TEXT) AS SERVICEORDER_TYPE,    -- NULL for trouble tickets
+    tt.STATUS AS STATUS,                       -- Trouble ticket status (should contain 'CLOSED')
+    tt.STATUS AS TROUBLE_TICKET_STATUS,        -- Same as STATUS for trouble tickets (for consistency)
+    CAST(NULL AS TEXT) AS SERVICEORDER_TYPE,   -- NULL for trouble tickets
     sa.SERVICE_MODEL,                          -- Service model
     lt.TASK_NAME                               -- Task name
 
