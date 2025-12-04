@@ -12,6 +12,7 @@ This document maps each column in the **Combined Installs and Trouble Tickets** 
 |------------------|-------------------|-------------------------|---------------|-------|
 | `VISIT_TYPE` | Literal: 'Install' | Literal: 'Trouble Ticket' | **Category** | Distinguishes between installs and trouble tickets |
 | `VISIT_ID` | `latest.ORDER_ID`<br>`CAMVIO.PUBLIC.SERVICEORDERS` | `CAST(NULL AS NUMBER)` | **Entity Key** | ORDER_ID for installs, NULL for trouble tickets |
+| `ORDER_ID` | `latest.ORDER_ID`<br>`CAMVIO.PUBLIC.SERVICEORDERS` | `CAST(NULL AS NUMBER)` | **Entity Key** | ORDER_ID for installs, NULL for trouble tickets (explicit field) |
 | `SERVICEORDER_ID` | `latest.SERVICEORDER_ID`<br>`CAMVIO.PUBLIC.SERVICEORDERS` | `CAST(NULL AS NUMBER)` | **Entity Key** | Service order ID (NULL for trouble tickets) |
 | `TROUBLE_TICKET_ID` | `CAST(NULL AS NUMBER)` | `tt.TROUBLE_TICKET_ID`<br>`CAMVIO.PUBLIC.TROUBLE_TICKETS` | **Entity Key** | Trouble ticket ID (NULL for installs) |
 | `ACCOUNT_ID` | `latest.ACCOUNT_ID`<br>`CAMVIO.PUBLIC.SERVICEORDERS` | `tt.ACCOUNT_ID`<br>`CAMVIO.PUBLIC.TROUBLE_TICKETS` | **Entity Key** | Account identifier (from both sources) |
@@ -43,6 +44,13 @@ This document maps each column in the **Combined Installs and Trouble Tickets** 
 - **Trouble Tickets**: `NULL`
 - **Semantic Type**: **Entity Key**
 - **Purpose**: Primary identifier for installs (ORDER_ID)
+
+### ORDER_ID
+- **Installs**: `CAMVIO.PUBLIC.SERVICEORDERS.ORDER_ID` (via `latest` subquery)
+- **Trouble Tickets**: `NULL`
+- **Semantic Type**: **Entity Key**
+- **Purpose**: Explicit ORDER_ID field (same value as VISIT_ID for installs, NULL for trouble tickets)
+- **Note**: This is the same value as VISIT_ID for installs, but provided as a separate explicit field for clarity and direct access
 
 ### SERVICEORDER_ID
 - **Installs**: `CAMVIO.PUBLIC.SERVICEORDERS.SERVICEORDER_ID` (via `latest` subquery)
@@ -170,7 +178,7 @@ This document maps each column in the **Combined Installs and Trouble Tickets** 
 ## Semantic Types Summary
 
 ### Entity Keys (IDs)
-- `VISIT_ID`, `SERVICEORDER_ID`, `TROUBLE_TICKET_ID`, `ACCOUNT_ID`
+- `VISIT_ID`, `ORDER_ID`, `SERVICEORDER_ID`, `TROUBLE_TICKET_ID`, `ACCOUNT_ID`
 
 ### Entity Name
 - `ASSIGNEE` (technician name)
@@ -191,7 +199,7 @@ This document maps each column in the **Combined Installs and Trouble Tickets** 
 
 ### NULL Values
 - **Installs**: `TROUBLE_TICKET_ID` is NULL
-- **Trouble Tickets**: `VISIT_ID`, `SERVICEORDER_ID`, `SERVICEORDER_TYPE` are NULL
+- **Trouble Tickets**: `VISIT_ID`, `ORDER_ID`, `SERVICEORDER_ID`, `SERVICEORDER_TYPE` are NULL
 - **Note**: `STATUS` and `TROUBLE_TICKET_STATUS` now have values for both types (unified status field)
 - This is intentional - fields are NULL when not applicable to that visit type
 
