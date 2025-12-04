@@ -21,10 +21,25 @@ This directory contains SQL queries for the Camvio Snowflake instance, including
 
 ## Usage in Metabase
 
-These queries can be used as:
-1. **Native Queries**: Direct SQL queries in Metabase
-2. **Model Base Queries**: Starting point for creating Metabase models
-3. **Reference**: Examples of how to join Camvio tables
+### Model Structure
+
+**`installs_by_individual.sql`** is designed to be used as a **base model** in Metabase:
+
+1. **Base Model**: `Installs by Individual (Base)`
+   - Use the SQL from `installs_by_individual.sql` as the model query
+   - This provides raw data from Camvio
+   - No custom columns or calculations
+
+2. **Enhanced Model**: `Installs by Individual (Enhanced)`
+   - Create a new model based on the base model
+   - Add custom columns, calculated fields, and business logic
+   - See `docs/metabase/models/INSTALLS_BY_INDIVIDUAL.md` for custom column examples
+
+### Other Usage Options
+
+These queries can also be used as:
+1. **Native Queries**: Direct SQL queries in Metabase (for ad-hoc analysis)
+2. **Reference**: Examples of how to join Camvio tables
 
 ## Adding New Queries
 

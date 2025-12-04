@@ -38,7 +38,9 @@ This repository contains:
 ├── docs/
 │   └── metabase/
 │       ├── Custom Column Definitions - Render.md  # Metabase custom column definitions
-│       └── drop_bury_custom_columns.txt          # Additional column definitions
+│       ├── drop_bury_custom_columns.txt          # Additional column definitions
+│       └── models/                               # Metabase model documentation
+│           └── INSTALLS_BY_INDIVIDUAL.md        # Installs by Individual model structure
 └── snowflake/
     ├── fybe/                          # Fybe instance SQL views
     │   ├── DROP_BURY_BY_DAY_V.sql
