@@ -110,8 +110,9 @@ WHERE latest.rn = 1;  -- Only get the row with the latest TASK_ENDED per ORDER_I
 --    - Guarantees deterministic results (one row per ORDER_ID)
 --
 -- 6. Removed SERVICELINE_NUMBER field - not needed in final output
+--    - SERVICELINE_NUMBER is used internally for joins but not in final output
 --
--- 6. Kept essential fields only - reduces data transfer and processing
+-- 7. Kept essential fields only - reduces data transfer and processing
 --
 -- Performance Benefits:
 -- - Fewer JOINs = faster query execution
