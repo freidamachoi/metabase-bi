@@ -184,8 +184,8 @@ To discover the structure of the Camvio database, run the queries in [`DISCOVERY
 
 | Fybe View | Fybe Field | Camvio Table | Camvio Field | Join Type | Data Types |
 |-----------|------------|--------------|--------------|-----------|------------|
-| `VW_RENDER_TICKETS` | `WORK_PACKAGE` | `SERVICEORDERS` | `ORDER_ID` | Inner/Left | Fybe: TEXT/VARCHAR, Camvio: NUMBER |
-| `VW_RENDER_UNITS` | `WORK_PACKAGE` | `SERVICEORDERS` | `ORDER_ID` | Inner/Left | Fybe: TEXT/VARCHAR, Camvio: NUMBER |
+| `VW_RENDER_TICKETS` | `WORK_PACKAGE` | `SERVICEORDERS` | `SERVICEORDER_ID` | Inner/Left | Fybe: TEXT/VARCHAR, Camvio: NUMBER |
+| `VW_RENDER_UNITS` | `WORK_PACKAGE` | `SERVICEORDERS` | `SERVICEORDER_ID` | Inner/Left | Fybe: TEXT/VARCHAR, Camvio: NUMBER |
 
 **Join Logic:**
 ```sql
@@ -195,13 +195,14 @@ SELECT
   c.*
 FROM fybe_view f
 LEFT JOIN camvio.SERVICEORDERS c
-  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.ORDER_ID
+  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.SERVICEORDER_ID
 ```
 
 **Important Notes:**
-- ⚠️ **Data Type Conversion**: Fybe `WORK_PACKAGE` is TEXT/VARCHAR, Camvio `ORDER_ID` is NUMBER - may need CAST/CONVERT
+- ⚠️ **Data Type Conversion**: Fybe `WORK_PACKAGE` is TEXT/VARCHAR, Camvio `SERVICEORDER_ID` is NUMBER - may need CAST/CONVERT
+- ⚠️ **ORDER_ID vs SERVICEORDER_ID**: These are different fields - `ORDER_ID` does NOT equal `SERVICEORDER_ID`. Only `SERVICEORDER_ID` relates to Fybe `WORK_PACKAGE`.
 - ⚠️ **TASK_IDs are NOT related**: TASK_ID values are platform-specific and have no relationship between systems
-- ✅ **This is the ONLY join point** - all other fields (TASK_ID, ASSET_ID, PROJECT_ID, etc.) are independent
+- ✅ **This is the ONLY join point** - all other fields (TASK_ID, ASSET_ID, PROJECT_ID, ORDER_ID, etc.) are independent
 
 ### Related Tables for Enrichment
 
@@ -209,17 +210,18 @@ Once joined on `ORDER_ID`, you can enrich with related Camvio tables:
 
 | Camvio Table | Join Key | Purpose |
 |-------------|----------|---------|
-| `SERVICEORDER_TASKS` | `SERVICEORDER_ID` or `ORDER_ID` | Task-level details for the service order |
-| `SERVICEORDER_ADDRESSES` | `ORDER_ID` or `SERVICEORDER_ID` | Address information for the service order |
-| `SERVICEORDER_FEATURES` | `ORDER_ID` or `SERVICEORDER_ID` | Features associated with the service order |
-| `SERVICEORDER_NOTES` | `ORDER_ID` or `SERVICEORDER_ID` | Notes and comments for the service order |
+| `SERVICEORDER_TASKS` | `SERVICEORDER_ID` | Task-level details for the service order |
+| `SERVICEORDER_ADDRESSES` | `SERVICEORDER_ID` | Address information for the service order |
+| `SERVICEORDER_FEATURES` | `SERVICEORDER_ID` | Features associated with the service order |
+| `SERVICEORDER_NOTES` | `SERVICEORDER_ID` | Notes and comments for the service order |
 
 ### Common Join Keys Summary
 
 | Camvio Field | Fybe Field | Join Type | Status | Notes |
 |-------------|------------|-----------|--------|-------|
-| `SERVICEORDERS.ORDER_ID` | `VW_RENDER_TICKETS.WORK_PACKAGE` | Inner/Left | ✅ **CONFIRMED** | Primary join - may need type conversion |
-| `SERVICEORDERS.ORDER_ID` | `VW_RENDER_UNITS.WORK_PACKAGE` | Inner/Left | ✅ **CONFIRMED** | Primary join - may need type conversion |
+| `SERVICEORDERS.SERVICEORDER_ID` | `VW_RENDER_TICKETS.WORK_PACKAGE` | Inner/Left | ✅ **CONFIRMED** | Primary join - may need type conversion |
+| `SERVICEORDERS.SERVICEORDER_ID` | `VW_RENDER_UNITS.WORK_PACKAGE` | Inner/Left | ✅ **CONFIRMED** | Primary join - may need type conversion |
+| `SERVICEORDERS.ORDER_ID` | `VW_RENDER_TICKETS.WORK_PACKAGE` | ❌ **NO RELATIONSHIP** | ❌ **INVALID** | ORDER_ID ≠ SERVICEORDER_ID, ORDER_ID does not relate to WORK_PACKAGE |
 | `SERVICEORDER_TASKS.TASK_ID` | `VW_RENDER_TICKETS.TASK_ID` | ❌ **NO RELATIONSHIP** | ❌ **INVALID** | TASK_IDs are platform-specific, not related |
 | `TROUBLE_TICKET_TASKS.TASK_ID` | `VW_RENDER_TICKETS.TASK_ID` | ❌ **NO RELATIONSHIP** | ❌ **INVALID** | TASK_IDs are platform-specific, not related |
 
@@ -227,34 +229,34 @@ Once joined on `ORDER_ID`, you can enrich with related Camvio tables:
 
 1. **Fybe Render Tickets + Camvio Service Orders** (PRIMARY MODEL):
    - **Base**: `VW_RENDER_TICKETS` (Fybe)
-   - **Join**: `SERVICEORDERS` (Camvio) on `WORK_PACKAGE` = `ORDER_ID`
+   - **Join**: `SERVICEORDERS` (Camvio) on `WORK_PACKAGE` = `SERVICEORDER_ID`
    - **Enrichment**: 
-     - `SERVICEORDER_TASKS` on `ORDER_ID`
-     - `SERVICEORDER_ADDRESSES` on `ORDER_ID`
-     - `SERVICEORDER_NOTES` on `ORDER_ID`
+     - `SERVICEORDER_TASKS` on `SERVICEORDER_ID`
+     - `SERVICEORDER_ADDRESSES` on `SERVICEORDER_ID`
+     - `SERVICEORDER_NOTES` on `SERVICEORDER_ID`
    - **Purpose**: Link Fybe render tickets to Camvio service order details
    - **Status**: ✅ **READY TO CREATE** - Join key confirmed
 
 2. **Fybe Render Units + Camvio Service Orders**:
    - **Base**: `VW_RENDER_UNITS` (Fybe)
-   - **Join**: `SERVICEORDERS` (Camvio) on `WORK_PACKAGE` = `ORDER_ID`
+   - **Join**: `SERVICEORDERS` (Camvio) on `WORK_PACKAGE` = `SERVICEORDER_ID`
    - **Enrichment**: 
-     - `SERVICEORDER_TASKS` on `ORDER_ID`
-     - `SERVICEORDER_ADDRESSES` on `ORDER_ID`
+     - `SERVICEORDER_TASKS` on `SERVICEORDER_ID`
+     - `SERVICEORDER_ADDRESSES` on `SERVICEORDER_ID`
    - **Purpose**: Link Fybe render units to Camvio service order details
    - **Status**: ✅ **READY TO CREATE** - Join key confirmed
 
 3. **Unified Service Order View**:
    - **Base**: `SERVICEORDERS` (Camvio)
-   - **Join**: `VW_RENDER_TICKETS` and `VW_RENDER_UNITS` (Fybe) on `ORDER_ID` = `WORK_PACKAGE`
+   - **Join**: `VW_RENDER_TICKETS` and `VW_RENDER_UNITS` (Fybe) on `SERVICEORDER_ID` = `WORK_PACKAGE`
    - **Purpose**: Camvio-centric view with Fybe work details
    - **Status**: ✅ **READY TO CREATE** - Join key confirmed
 
 ## Sample Queries
 
-### Example 1: Validate WORK_PACKAGE to ORDER_ID Join
+### Example 1: Validate WORK_PACKAGE to SERVICEORDER_ID Join
 
-Check overlap between Fybe WORK_PACKAGE and Camvio ORDER_ID:
+Check overlap between Fybe WORK_PACKAGE and Camvio SERVICEORDER_ID:
 
 ```sql
 -- In Fybe Snowflake - Sample WORK_PACKAGE values
@@ -269,15 +271,15 @@ GROUP BY WORK_PACKAGE
 ORDER BY ticket_count DESC
 LIMIT 100;
 
--- In Camvio Snowflake - Sample ORDER_ID values
+-- In Camvio Snowflake - Sample SERVICEORDER_ID values
 SELECT 
   'SERVICEORDERS' as source,
-  ORDER_ID,
-  COUNT(*) as order_count,
-  COUNT(DISTINCT SERVICEORDER_ID) as distinct_serviceorders
+  SERVICEORDER_ID,
+  ORDER_ID,  -- Note: ORDER_ID is different from SERVICEORDER_ID
+  COUNT(*) as order_count
 FROM PUBLIC.SERVICEORDERS
-WHERE ORDER_ID IS NOT NULL
-GROUP BY ORDER_ID
+WHERE SERVICEORDER_ID IS NOT NULL
+GROUP BY SERVICEORDER_ID, ORDER_ID
 ORDER BY order_count DESC
 LIMIT 100;
 ```
@@ -299,8 +301,8 @@ SELECT
   f.CONTRACTOR as fybe_contractor,
   
   -- Camvio fields
-  c.ORDER_ID,
-  c.SERVICEORDER_ID,
+  c.SERVICEORDER_ID,  -- This is the join key (not ORDER_ID)
+  c.ORDER_ID,  -- Note: ORDER_ID is different and not used for joining
   c.STATUS as camvio_order_status,
   c.ACCOUNT_ID,
   c.ACCOUNT_NUMBER,
@@ -311,7 +313,7 @@ SELECT
   
 FROM DATA_LAKE.ANALYTICS.VW_RENDER_TICKETS f
 LEFT JOIN PUBLIC.SERVICEORDERS c
-  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.ORDER_ID
+  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.SERVICEORDER_ID
 WHERE f.WORK_PACKAGE IS NOT NULL;
 ```
 
@@ -325,8 +327,8 @@ SELECT
   f.PROJECT_ID,
   f.STATUS as fybe_status,
   
-  c.ORDER_ID,
-  c.SERVICEORDER_ID,
+  c.SERVICEORDER_ID,  -- Join key
+  c.ORDER_ID,  -- Different field, not used for joining
   c.STATUS as camvio_order_status,
   
   sot.TASK_ID as camvio_task_id,
@@ -337,9 +339,9 @@ SELECT
   
 FROM DATA_LAKE.ANALYTICS.VW_RENDER_TICKETS f
 LEFT JOIN PUBLIC.SERVICEORDERS c
-  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.ORDER_ID
+  ON CAST(f.WORK_PACKAGE AS NUMBER) = c.SERVICEORDER_ID
 LEFT JOIN PUBLIC.SERVICEORDER_TASKS sot
-  ON c.ORDER_ID = sot.ORDER_ID
+  ON c.SERVICEORDER_ID = sot.SERVICEORDER_ID
 WHERE f.WORK_PACKAGE IS NOT NULL;
 ```
 
@@ -357,14 +359,15 @@ GROUP BY WORK_PACKAGE, TYPEOF(WORK_PACKAGE)
 ORDER BY count DESC
 LIMIT 50;
 
--- In Camvio - Check ORDER_ID format
+-- In Camvio - Check SERVICEORDER_ID format (the join key)
 SELECT 
-  ORDER_ID,
-  TYPEOF(ORDER_ID) as data_type,
+  SERVICEORDER_ID,
+  TYPEOF(SERVICEORDER_ID) as data_type,
+  ORDER_ID,  -- For comparison - note these are different
   COUNT(*) as count
 FROM PUBLIC.SERVICEORDERS
-WHERE ORDER_ID IS NOT NULL
-GROUP BY ORDER_ID, TYPEOF(ORDER_ID)
+WHERE SERVICEORDER_ID IS NOT NULL
+GROUP BY SERVICEORDER_ID, TYPEOF(SERVICEORDER_ID), ORDER_ID
 ORDER BY count DESC
 LIMIT 50;
 ```
@@ -398,12 +401,12 @@ LIMIT 50;
 2. ✅ **Identify join keys with Fybe data** - COMPLETE
    - **Primary Join**: `WORK_PACKAGE` (Fybe) = `ORDER_ID` (Camvio) ✅ **CONFIRMED**
    - **TASK_ID**: Confirmed NO relationship between systems ✅
-3. ⚠️ **Validate WORK_PACKAGE to ORDER_ID join** - **ACTION REQUIRED**
+3. ⚠️ **Validate WORK_PACKAGE to SERVICEORDER_ID join** - **ACTION REQUIRED**
    - Sample WORK_PACKAGE values from Fybe
-   - Sample ORDER_ID values from Camvio
+   - Sample SERVICEORDER_ID values from Camvio (NOT ORDER_ID - they are different)
    - Check data type compatibility (Fybe: TEXT/VARCHAR, Camvio: NUMBER)
    - Verify join logic works (may need CAST/CONVERT)
-   - Check match rate (how many Fybe records have matching Camvio orders)
+   - Check match rate (how many Fybe records have matching Camvio service orders)
 4. ⏳ **Create Metabase models combining both instances** - **READY TO START**
    - Model 1: Fybe Render Tickets + Camvio Service Orders
    - Model 2: Fybe Render Units + Camvio Service Orders
@@ -415,14 +418,16 @@ LIMIT 50;
 
 Before creating Metabase models, run these validation queries:
 
-1. **WORK_PACKAGE to ORDER_ID Match Rate**: 
-   - Count how many Fybe records have matching Camvio orders
+1. **WORK_PACKAGE to SERVICEORDER_ID Match Rate**: 
+   - Count how many Fybe records have matching Camvio service orders
    - Identify any data quality issues (nulls, format mismatches)
+   - **Important**: Use SERVICEORDER_ID, NOT ORDER_ID (they are different fields)
 
 2. **Data Type Check**: 
    - Verify WORK_PACKAGE format in Fybe (text vs number)
-   - Check if ORDER_ID in Camvio matches the format
+   - Check if SERVICEORDER_ID in Camvio matches the format
    - Test CAST/CONVERT logic
+   - **Note**: ORDER_ID and SERVICEORDER_ID are different - only SERVICEORDER_ID relates to WORK_PACKAGE
 
 3. **Sample Join Test**: 
    - Run a sample join query to verify the logic works
