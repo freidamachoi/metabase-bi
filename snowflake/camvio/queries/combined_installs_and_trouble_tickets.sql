@@ -23,6 +23,7 @@ SELECT
     
     -- Identifiers (Install uses ORDER_ID as primary)
     latest.ORDER_ID AS VISIT_ID,                -- Primary identifier for installs
+    latest.ORDER_ID,                             -- ORDER_ID (explicit field)
     latest.SERVICEORDER_ID,
     CAST(NULL AS NUMBER) AS TROUBLE_TICKET_ID,  -- NULL for installs
     latest.ACCOUNT_ID,
@@ -89,6 +90,7 @@ SELECT
     
     -- Identifiers (Trouble Ticket uses TROUBLE_TICKET_ID as primary)
     CAST(NULL AS NUMBER) AS VISIT_ID,          -- NULL for trouble tickets (use TROUBLE_TICKET_ID)
+    CAST(NULL AS NUMBER) AS ORDER_ID,          -- NULL for trouble tickets (no ORDER_ID)
     CAST(NULL AS NUMBER) AS SERVICEORDER_ID,   -- NULL for trouble tickets
     tt.TROUBLE_TICKET_ID,
     tt.ACCOUNT_ID,
@@ -151,6 +153,7 @@ WHERE tt.status ILIKE '%CLOSED%';
 -- Common Fields (aligned in both queries):
 -- - VISIT_TYPE: 'Install' or 'Trouble Ticket' (distinguishes the source)
 -- - VISIT_ID: ORDER_ID for installs, NULL for trouble tickets
+-- - ORDER_ID: ORDER_ID for installs, NULL for trouble tickets
 -- - TROUBLE_TICKET_ID: NULL for installs, TROUBLE_TICKET_ID for trouble tickets
 -- - ASSIGNEE: Technician name
 -- - ACCOUNT_TYPE: Account type
