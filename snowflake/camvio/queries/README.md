@@ -60,6 +60,26 @@ This directory contains SQL queries for the Camvio Snowflake instance, including
 - **Note**: Creates multiple rows per service order if multiple features or charges exist
 - **Use When**: You need to analyze completed services, their features/rates, and associated charges
 
+### `service_orders_charges_by_type.sql` ⭐ **CHARGES BY TYPE (AGGREGATED)**
+- **Purpose**: Get completed service orders with charges **aggregated by type**
+- **Key Features**:
+  - Recurring credits grouped by `RECURRING_CREDIT_NAME` (type)
+  - Other charges grouped by `ITEM_TYPE` (type)
+  - Amounts summed by type per service order
+- **Structure**: UNION ALL query separating recurring credits and other charges
+- **Filters**: 
+  - `STATUS` = 'COMPLETED'
+  - Only shows service orders that have charges (INNER JOIN)
+- **Key Fields**: 
+  - `CHARGE_TYPE` ('Recurring Credit' or 'Other Charge')
+  - `CHARGE_TYPE_NAME` (RECURRING_CREDIT_NAME or ITEM_TYPE)
+  - `CHARGE_AMOUNT` (sum of amounts by type)
+  - `CHARGE_COUNT` (count of charges by type)
+  - `SERVICELINE_STARTDATE` (service line start date)
+- **Tables**: 4 tables (SERVICEORDERS, SERVICELINES, ACCOUNT_RECURRING_CREDITS, ACCOUNT_OTHER_CHARGES_CREDITS)
+- **Note**: One row per service order per charge type
+- **Use When**: You need to analyze charge amounts grouped by type (e.g., "How much in recurring credits by credit name?" or "How much in other charges by item type?")
+
 ## Usage in Metabase
 
 ### Model Structure
