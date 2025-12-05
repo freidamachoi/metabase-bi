@@ -39,8 +39,8 @@ This document maps each column in the **Service Orders with Charges** Metabase m
 | `ACCOUNT_RECURRING_STATUS` | `ACCOUNT_RECURRING_CREDITS.ACCOUNT_RECURRING_STATUS` | **Category** | Medium | Recurring credit status |
 | `RECURRING_CREDIT_START_DATETIME` | `ACCOUNT_RECURRING_CREDITS.RECURRING_CREDIT_START_DATETIME` | **Creation Timestamp** | Medium | Recurring credit start date |
 | `RECURRING_CREDIT_END_DATETIME` | `ACCOUNT_RECURRING_CREDITS.RECURRING_CREDIT_END_DATETIME` | **Date** | Medium | Recurring credit end date |
-| `RECURRING_CREDIT_VALID_FROM` | `ACCOUNT_RECURRING_CREDITS.RECURRING_CREDIT_VALID_FROM` | **Date** | Low | Valid from date |
-| `RECURRING_CREDIT_VALID_TO` | `ACCOUNT_RECURRING_CREDITS.RECURRING_CREDIT_VALID_TO` | **Date** | Low | Valid to date |
+| `RECURRING_CREDIT_VALID_FROM` | `ACCOUNT_RECURRING_CREDITS.ACCOUNT_RECURRING_VALID_FROM` | **Date** | Low | Valid from date |
+| `RECURRING_CREDIT_VALID_TO` | `ACCOUNT_RECURRING_CREDITS.ACCOUNT_RECURRING_VALID_TO` | **Date** | Low | Valid to date |
 | `RECURRING_ITEM_NAME` | `ACCOUNT_RECURRING_CREDITS.RECURRING_ITEM_NAME` | **Category** | Low | Recurring item name |
 | `RECURRING_ITEM_DESCRIPTION` | `ACCOUNT_RECURRING_CREDITS.RECURRING_ITEM_DESCRIPTION` | **Description** | Low | Recurring item description |
 | `OCC_AMOUNT` | `ACCOUNT_OTHER_CHARGES_CREDITS.OCC_AMOUNT` | **Currency** | ⭐ **HIGH** | ⭐ **One-time charge amount** |
