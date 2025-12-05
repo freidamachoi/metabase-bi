@@ -55,7 +55,7 @@ SELECT
     sf.PLAN AS ITEM_PLAN,
     sf.FEATURE_PRICE AS RATE,  -- Rate per unit
     sf.QTY AS QUANTITY,  -- Quantity
-    sf.FEATURE_PRICE * sf.QTY AS AMOUNT,  -- Total amount (rate * quantity)
+    CASE WHEN UPPER(sf.FEATURE) LIKE '%PROMO%' THEN -(sf.FEATURE_PRICE * sf.QTY) ELSE sf.FEATURE_PRICE * sf.QTY END AS AMOUNT,  -- Total amount (rate * quantity), negative if contains "PROMO"
     sf.START_DATETIME AS ITEM_START_DATETIME,
     sf.END_DATETIME AS ITEM_END_DATETIME,
     
@@ -110,7 +110,7 @@ SELECT
     CAST(NULL AS TEXT) AS ITEM_PLAN,
     arc.RECURRING_CREDIT_AMOUNT AS RATE,  -- Rate per unit (same as amount for recurring credits)
     1 AS QUANTITY,  -- Quantity = 1 per recurring credit record
-    arc.RECURRING_CREDIT_AMOUNT AS AMOUNT,  -- Total amount
+    CASE WHEN UPPER(arc.RECURRING_CREDIT_NAME) LIKE '%PROMO%' THEN -arc.RECURRING_CREDIT_AMOUNT ELSE arc.RECURRING_CREDIT_AMOUNT END AS AMOUNT,  -- Total amount, negative if contains "PROMO"
     arc.RECURRING_CREDIT_START_DATETIME AS ITEM_START_DATETIME,
     arc.RECURRING_CREDIT_END_DATETIME AS ITEM_END_DATETIME,
     
@@ -165,7 +165,7 @@ SELECT
     CAST(NULL AS TEXT) AS ITEM_PLAN,
     aocc.OCC_AMOUNT AS RATE,  -- Rate per unit (same as amount for one-time charges)
     1 AS QUANTITY,  -- Quantity = 1 per one-time charge record
-    aocc.OCC_AMOUNT AS AMOUNT,  -- Total amount
+    CASE WHEN UPPER(aocc.ITEM_NAME) LIKE '%PROMO%' THEN -aocc.OCC_AMOUNT ELSE aocc.OCC_AMOUNT END AS AMOUNT,  -- Total amount, negative if contains "PROMO"
     CAST(NULL AS TIMESTAMP_NTZ) AS ITEM_START_DATETIME,
     CAST(NULL AS TIMESTAMP_NTZ) AS ITEM_END_DATETIME,
     
