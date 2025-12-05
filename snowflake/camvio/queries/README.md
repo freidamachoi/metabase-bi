@@ -42,6 +42,24 @@ This directory contains SQL queries for the Camvio Snowflake instance, including
   - Easy to filter by type or aggregate across both
   - Consistent structure for reporting
 
+### `service_orders_with_charges.sql` ⭐ **SERVICE ORDERS WITH CHARGES**
+- **Purpose**: Get completed service orders with service lines, features, and account charges
+- **Key Features**:
+  - Service lines (including SERVICELINE_STARTDATE)
+  - Service line features (services on the order with rates/PRICE)
+  - Account recurring credits (recurring charges)
+  - Account other charges/credits (one-time charges)
+- **Filters**: 
+  - `STATUS` = 'COMPLETED'
+- **Key Fields**: 
+  - `SERVICELINE_STARTDATE` (service line start date)
+  - `FEATURE_PRICE` (rate associated with each service feature)
+  - `RECURRING_CREDIT_AMOUNT` (recurring charge amount)
+  - `OCC_AMOUNT` (one-time charge amount)
+- **Tables**: 5 tables (SERVICEORDERS, SERVICELINES, SERVICELINE_FEATURES, ACCOUNT_RECURRING_CREDITS, ACCOUNT_OTHER_CHARGES_CREDITS)
+- **Note**: Creates multiple rows per service order if multiple features or charges exist
+- **Use When**: You need to analyze completed services, their features/rates, and associated charges
+
 ## Usage in Metabase
 
 ### Model Structure
