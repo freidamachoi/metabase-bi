@@ -38,7 +38,7 @@ SELECT
     so.STATUS AS SERVICEORDER_STATUS,
     so.SERVICEORDER_TYPE,
     so.SERVICELINE_NUMBER,
-    so.SALES_AGENT,  -- Required: Sales agent for commissions
+    INITCAP(REPLACE(so.SALES_AGENT, '.', ' ')) AS SALES_AGENT,  -- Required: Sales agent for commissions (title case, split on '.')
     so.CREATED_DATETIME AS SERVICEORDER_CREATED,
     so.MODIFIED_DATETIME AS SERVICEORDER_MODIFIED,
     so.APPLY_DATE,
@@ -93,7 +93,7 @@ SELECT
     so.STATUS AS SERVICEORDER_STATUS,
     so.SERVICEORDER_TYPE,
     so.SERVICELINE_NUMBER,
-    so.SALES_AGENT,  -- Required: Sales agent for commissions
+    INITCAP(REPLACE(so.SALES_AGENT, '.', ' ')) AS SALES_AGENT,  -- Required: Sales agent for commissions (title case, split on '.')
     so.CREATED_DATETIME AS SERVICEORDER_CREATED,
     so.MODIFIED_DATETIME AS SERVICEORDER_MODIFIED,
     so.APPLY_DATE,
@@ -148,7 +148,7 @@ SELECT
     so.STATUS AS SERVICEORDER_STATUS,
     so.SERVICEORDER_TYPE,
     so.SERVICELINE_NUMBER,
-    so.SALES_AGENT,  -- Required: Sales agent for commissions
+    INITCAP(REPLACE(so.SALES_AGENT, '.', ' ')) AS SALES_AGENT,  -- Required: Sales agent for commissions (title case, split on '.')
     so.CREATED_DATETIME AS SERVICEORDER_CREATED,
     so.MODIFIED_DATETIME AS SERVICEORDER_MODIFIED,
     so.APPLY_DATE,
