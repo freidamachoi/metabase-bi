@@ -196,10 +196,14 @@ ORDER BY total_all_charges DESC;
 - **Service Orders with Charges** - Detailed view with all charge fields (not aggregated)
 - **Combined Installs and Trouble Tickets** - Technician visit data
 
+## Related Documentation
+
+- **Semantic Types Reference**: [`SERVICE_ORDERS_CHARGES_BY_TYPE_SEMANTIC_TYPES.md`](./SERVICE_ORDERS_CHARGES_BY_TYPE_SEMANTIC_TYPES.md) - Quick reference for setting semantic types in Metabase
+
 ## Next Steps
 
 1. ✅ Create base model in Metabase
-2. ⏳ Set semantic types (see `SERVICE_ORDERS_CHARGES_BY_TYPE_COLUMN_MAPPING.md`)
+2. ⏳ Set semantic types (see `SERVICE_ORDERS_CHARGES_BY_TYPE_SEMANTIC_TYPES.md`)
 3. ⏳ Create enhanced model with custom columns
 4. ⏳ Add metrics and aggregations
 5. ⏳ Create dashboards and reports
