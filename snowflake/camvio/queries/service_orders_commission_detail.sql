@@ -45,7 +45,7 @@ SELECT
     so.TARGET_DATETIME,
     
     -- Service Line Details
-    sl.SERVICELINE_STARTDATE,  -- Required: Service line start date
+    MAX(sl.SERVICELINE_STARTDATE) OVER (PARTITION BY so.ORDER_ID) AS SERVICELINE_STARTDATE,  -- Required: Latest service line start date per order
     sl.SERVICELINE_ENDDATE,
     sl.SERVICELINE_STATUS,
     sl.SERVICE_MODEL AS SERVICELINE_SERVICE_MODEL,
@@ -100,7 +100,7 @@ SELECT
     so.TARGET_DATETIME,
     
     -- Service Line Details
-    sl.SERVICELINE_STARTDATE,  -- Required: Service line start date
+    MAX(sl.SERVICELINE_STARTDATE) OVER (PARTITION BY so.ORDER_ID) AS SERVICELINE_STARTDATE,  -- Required: Latest service line start date per order
     sl.SERVICELINE_ENDDATE,
     sl.SERVICELINE_STATUS,
     sl.SERVICE_MODEL AS SERVICELINE_SERVICE_MODEL,
@@ -155,7 +155,7 @@ SELECT
     so.TARGET_DATETIME,
     
     -- Service Line Details
-    sl.SERVICELINE_STARTDATE,  -- Required: Service line start date
+    MAX(sl.SERVICELINE_STARTDATE) OVER (PARTITION BY so.ORDER_ID) AS SERVICELINE_STARTDATE,  -- Required: Latest service line start date per order
     sl.SERVICELINE_ENDDATE,
     sl.SERVICELINE_STATUS,
     sl.SERVICE_MODEL AS SERVICELINE_SERVICE_MODEL,
