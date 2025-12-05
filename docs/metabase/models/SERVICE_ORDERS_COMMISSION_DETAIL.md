@@ -280,6 +280,10 @@ ORDER BY ORDER_ID, CHARGE_DATETIME DESC;
 - **INNER JOIN** for features and charges - only shows service orders that have them
 - **LEFT JOIN** for service lines - preserves service order even if service line doesn't exist
 
+## Related Documentation
+
+- **Semantic Types Reference**: [`SERVICE_ORDERS_COMMISSION_DETAIL_SEMANTIC_TYPES.md`](./SERVICE_ORDERS_COMMISSION_DETAIL_SEMANTIC_TYPES.md) - Quick reference for setting semantic types in Metabase
+
 ## Related Models
 
 - **Service Orders with Charges** - Detailed view with all charge fields (not unified)
