@@ -17,6 +17,7 @@ This model enables analysis of:
 2. **Other charge amounts by type** - Sum of `OCC_AMOUNT` grouped by `ITEM_TYPE`
 3. **Service orders with charges** - Only shows service orders that have charges (INNER JOIN)
 4. **Charge counts by type** - Number of charges of each type per service order
+5. **Sales commissions** - SALES_AGENT field for sales commission calculations ⭐ **REQUIRED**
 
 ## Model Structure
 
@@ -55,6 +56,14 @@ This model enables analysis of:
 - `SERVICEORDER_ID` - Service order identifier (joins to Fybe WORK_PACKAGE)
 - `ACCOUNT_ID` - Account identifier
 - `ACCOUNT_NUMBER` - Account number
+
+### Service Order Details
+- `SERVICEORDER_STATUS` - Should always be 'COMPLETED' (filtered)
+- `SERVICEORDER_TYPE` - Type of service order
+- `SERVICELINE_NUMBER` - Service line number (join key)
+- `SALES_AGENT` - ⭐ **Sales agent for commissions** (required field)
+- `SERVICEORDER_CREATED` - When service order was created
+- `SERVICEORDER_MODIFIED` - Last modification date
 
 ### Service Line Details
 - `SERVICELINE_STARTDATE` - ⭐ **Service line start date** (required field)

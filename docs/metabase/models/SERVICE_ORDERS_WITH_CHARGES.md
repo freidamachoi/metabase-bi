@@ -21,6 +21,7 @@ This model enables analysis of:
 4. **One-time charges** - From ACCOUNT_OTHER_CHARGES_CREDITS
 5. **Recurring charges** - From ACCOUNT_RECURRING_CREDITS
 6. **Service line start date** - SERVICELINE_STARTDATE from SERVICELINES table
+7. **Sales commissions** - SALES_AGENT field for sales commission calculations ⭐ **REQUIRED**
 
 ## Model Structure
 
@@ -88,6 +89,7 @@ COUNT(DISTINCT ORDER_ID)
 - `SERVICEORDER_STATUS` - Should always be 'COMPLETED' (filtered)
 - `SERVICEORDER_TYPE` - Type of service order
 - `SERVICELINE_NUMBER` - Service line number (join key)
+- `SALES_AGENT` - ⭐ **Sales agent for commissions** (required field)
 - `SERVICEORDER_CREATED` - When service order was created
 - `SERVICEORDER_MODIFIED` - Last modification date
 

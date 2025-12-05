@@ -18,6 +18,7 @@ This document maps each column in the **Service Orders with Charges** Metabase m
 | `SERVICEORDER_STATUS` | `SERVICEORDERS.STATUS` | **Category** | ⭐ **HIGH** | Should always be 'COMPLETED' |
 | `SERVICEORDER_TYPE` | `SERVICEORDERS.SERVICEORDER_TYPE` | **Category** | Medium | Service order type |
 | `SERVICELINE_NUMBER` | `SERVICEORDERS.SERVICELINE_NUMBER` | **Entity Key** | Medium | Service line number (join key) |
+| `SALES_AGENT` | `SERVICEORDERS.SALES_AGENT` | **Entity Name** | ⭐ **HIGH** | ⭐ **Required: Sales agent for commissions** |
 | `SERVICEORDER_CREATED` | `SERVICEORDERS.CREATED_DATETIME` | **Creation Timestamp** | Medium | Service order creation date |
 | `SERVICEORDER_MODIFIED` | `SERVICEORDERS.MODIFIED_DATETIME` | **Modification Timestamp** | Low | Last modification date |
 | `APPLY_DATE` | `SERVICEORDERS.APPLY_DATE` | **Date** | Low | Application date |
@@ -135,6 +136,7 @@ This document maps each column in the **Service Orders with Charges** Metabase m
 - `SERVICEORDER_ID` - Service order identifier (joins to Fybe WORK_PACKAGE)
 - `ACCOUNT_ID` - Account identifier (join key for charges)
 - `SERVICELINE_NUMBER` - Service line number (join key for service lines and features)
+- `SALES_AGENT` - ⭐ Sales agent for commissions (required field)
 - `STATUS` - Service order status (filtered to 'COMPLETED')
 
 ### SERVICELINES (alias: `sl`)
@@ -206,6 +208,7 @@ This document maps each column in the **Service Orders with Charges** Metabase m
 - `ORDER_ID`, `SERVICEORDER_ID`, `ACCOUNT_ID`, `ACCOUNT_NUMBER`, `SERVICELINE_NUMBER`
 
 ### Entity Name
+- `SALES_AGENT` (sales agent for commissions) ⭐ **REQUIRED**
 - `OCC_USER` (user who created the charge)
 
 ### Creation Timestamps
@@ -236,7 +239,8 @@ This document maps each column in the **Service Orders with Charges** Metabase m
 1. **SERVICEORDER_ID** (Entity Key) - Primary identifier
 2. **ORDER_ID** (Entity Key) - Order identifier
 3. **ACCOUNT_ID** (Entity Key) - Account identifier
-4. **SERVICELINE_STARTDATE** (Creation Timestamp) - ⭐ Required: Service line start date
+4. **SALES_AGENT** (Entity Name) - ⭐ **Required: Sales agent for commissions**
+5. **SERVICELINE_STARTDATE** (Creation Timestamp) - ⭐ Required: Service line start date
 5. **FEATURE** (Category) - Service/feature name
 6. **FEATURE_PRICE** (Currency) - ⭐ Rate associated with each service feature
 7. **RECURRING_CREDIT_AMOUNT** (Currency) - ⭐ Recurring charge amount
