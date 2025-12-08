@@ -1,0 +1,463 @@
+TABLE_SCHEMA,TABLE_NAME,VIEW_DEFINITION
+ANALYTICS,DROP_BURY_BY_DAY_V,"CREATE OR REPLACE VIEW ANALYTICS.DROP_BURY_BY_DAY_V AS
+SELECT
+  /* Calendar axis */
+  c.DATE_DAY,
+  c.DATE_KEY,
+  c.YEAR_NUM,
+  c.QUARTER_NUM,
+  c.MONTH_NUM,
+  c.WEEK_ISO,
+  c.DOW_ISO,
+  c.WEEK_START,
+  c.MONTH_START,
+  c.QUARTER_START,
+  c.YEAR_START,
+
+  /* Keys from fact */
+  f.PROJECT_ID,
+  f.ASSET_NUM,
+
+  /* Carry-throughs (edit to taste; keep the ones you need in BI) */
+  f.DROP_TASK_ID,
+  f.DROP_ASSET_ID,
+  f.DROP_CONTRACTOR,
+  f.""Drop Work Activity"",
+  f.DROP_QUANTITY,
+  f.""Drop Status"",
+  f.""Drop Created"",
+  f.""Drop Released"",
+  f.""Drop Approved"",
+  f.""Drop Completed"",
+  f.""Drop Work Package"",
+
+  f.BURY_TASK_ID,
+  f.BURY_ASSET_ID,
+  f.BURY_CONTRACTOR,
+  f.""Bury Work Activity"",
+  f.BURY_QUANTITY,
+  f.""Bury Status"",
+  f.""Bury Created"",
+  f.""Bury Released"",
+  f.""Bury Approved"",
+  f.""Bury Completed"",
+  f.""Bury Work Package"",
+
+  /* Persisted event date available for details */
+  f.ACTIVITY_DATE
+FROM ANALYTICS.CALENDAR_DIM      AS c
+LEFT JOIN ANALYTICS.DROP_BURY_DT AS f
+  ON f.DATE_KEY = c.DATE_KEY;"
+ANALYTICS,VW_LABOR_CODES,CREATE OR REPLACE VIEW DATA_LAKE.ANALYTICS.VW_LABOR_CODES     AS SELECT * FROM DATA_LAKE.ANALYTICS.LABOR_CODES;
+ANALYTICS,VW_RENDER_TICKETS,"create or replace view DATA_LAKE.ANALYTICS.VW_RENDER_TICKETS(
+	TASK_ID,
+	PROJECT_ID,
+	TASK,
+	PHASE,
+	QTTY,
+	STREET_ADDRESS,
+	ROAD_NAME,
+	STATUS,
+	CONTRACTOR,
+	WORK_PACKAGE,
+	FFP,
+	ASSET_ID,
+	RESOURCE_ID,
+	RESOURCE_USER_NAME,
+	DATE_RELEASED,
+	DATE_COMPLETED,
+	DATE_APPROVED,
+	ACTION,
+	WORK_ACTIVITY,
+	GROUP_ID,
+	NOTES,
+	BLUEPRINTED_DATE,
+	TARGET_DATE,
+	LABELS_GENERAL,
+	LABELS_GRANT_ID,
+	LABELS_WORK_ORDER
+) as
+SELECT *
+FROM DATA_LAKE.ANALYTICS.RENDER_TICKETS
+WHERE PROJECT_ID NOT IN (
+    'ECTYQA',
+    'ROAECTY',
+    'ROAEDTN',
+    'ROAEDTNQA',
+    'ROAESNS',
+    'ROAESNSQA',
+    'ROAHTFD',
+    'ROAHTFDQA',
+    'ROANA01',
+    'ROANA01QA',
+    'ROARDCU',
+    'ROARDCUQA',
+    'ROARRP',
+    'ROARRPQA',
+    'ROAWDSR',
+    'ROAWDSRQA',
+    'ROAWDVL',
+    'ROAWDVLQA'
+);"
+ANALYTICS,VW_RENDER_UNITS,"create or replace view DATA_LAKE.ANALYTICS.VW_RENDER_UNITS(
+    PROJECT,
+    TASK_ID,
+    STATUS,
+    TASK_TYPE,
+    WORK_PACKAGE,
+    SUBSECTOR,
+    LABELS_GENERAL,
+    LABELS_GRANT_ID,
+    LABELS_JOB_TYPE,
+    LABELS_SUPERVISOR,
+    LABELS_GRANT_AREAS,
+    LABELS_DROP_ADMIN,
+    LABELS_WORK_ORDER,
+    LABELS_DROP_API,
+    LABELS_WORK_CATEGORY,
+    LABELS_ERP_PROJECT_ID,
+    LABELS_FUNDING_POLYGONS,
+    LABELS_BLUEPRINT_ID,
+    ASSET_ID,
+    UNIT_TYPE,
+    RUS_CODE,
+    UNIT_CODE,
+    UNIT_DESCRIPTION,
+    UOM,
+    CONTRACTOR,
+    INSTALLED_PER_TASK_NOTES,
+    CREW_NAME,
+    WORK_ACTIVITY,
+    ACTUAL_QUANTITY,
+    APPROVING_USER,
+    APPROVED_DATE,
+    COMPLETED_DATE,
+    ORIGINAL_COMPLETED_DATE,
+    CHANGE_REQUEST_APPROVAL_NUMBER,
+    CONSTRUCTION_NOTES,
+    TASK_NOTES,
+    PLANNED_QUANTITY,
+    STREET_ADDRESS,
+    LABOR_CODE_CODE,
+    LABOR_CODE_RUS_CODE,
+    LABOR_CODE_DESCRIPTION,
+    LABOR_CODE_UOM,
+    LABOR_RATE
+) as
+SELECT
+    u.project,
+    u.task_id,
+    u.status,
+    u.task_type,
+    u.work_package,
+    u.subsector,
+    u.labels_general,
+    u.labels_grant_id,
+    u.labels_job_type,
+    u.labels_supervisor,
+    u.labels_grant_areas,
+    u.labels_drop_admin,
+    u.labels_work_order,
+    u.labels_drop_api,
+    u.labels_work_category,
+    u.labels_erp_project_id,
+    u.labels_funding_polygons,
+    u.labels_blueprint_id,
+    u.asset_id,
+    u.unit_type,
+    u.rus_code,
+    u.unit_code,                  -- already unified in base table
+    u.unit_description,
+    u.uom,
+    u.contractor,
+    u.installed_per_task_notes,
+    u.crew_name,
+    u.work_activity,
+    u.actual_quantity,
+    u.approving_user,
+    u.approved_date,
+    u.completed_date,
+    u.original_completed_date,
+    u.change_request_approval_number,
+    u.construction_notes,
+    u.task_notes,
+    u.planned_quantity,
+    u.street_address,
+
+    /* Labor code enrichment */
+    c.code        AS labor_code_code,
+    c.rus_code    AS labor_code_rus_code,
+    c.description AS labor_code_description,
+    c.uom         AS labor_code_uom,
+    c.rate        AS labor_rate
+
+FROM DATA_LAKE.ANALYTICS.RENDER_UNITS u
+LEFT JOIN DATA_LAKE.ANALYTICS.LABOR_CODES c
+    ON UPPER(u.unit_code) = UPPER(c.unit_code);"
+S3_STAGES,VW_LABOR_CODES,"CREATE OR REPLACE VIEW VW_LABOR_CODES AS
+SELECT
+  /* raw columns */
+  $1:""code""::STRING        AS code,
+  $1:""rus_code""::STRING    AS rus_code,
+  $1:""description""::STRING AS description,
+  $1:""uom""::STRING         AS uom,
+  $1:""rate""::FLOAT         AS rate,
+  /* parquet already typed as timestamp; keep NTZ for analytics */
+  $1:""modified""::TIMESTAMP_NTZ AS modified,
+
+  /* join-friendly unified key */
+  COALESCE($1:""code""::STRING, $1:""rus_code""::STRING) AS unit_code
+FROM @DATA_LAKE.S3_STAGES.ENCORE_STAGE_LABOR_CODES (FILE_FORMAT => 'PARQUET_FF');"
+S3_STAGES,VW_RENDER_ASSETS,"CREATE OR REPLACE VIEW DATA_LAKE.S3_STAGES.VW_RENDER_ASSETS AS
+SELECT
+  $1:""asset_id""::STRING                    AS asset_id,
+  $1:""customer_design_version""::STRING     AS customer_design_version,
+  $1:""inspection_task_type""::STRING        AS inspection_task_type,
+  $1:""inspection_task_blueprinted""::STRING AS inspection_task_blueprinted,
+  $1:""construction_task_id""::STRING        AS construction_task_id,
+  $1:""construction_task_net_id""::STRING    AS construction_task_net_id,
+  $1:""construction_task_complete""::STRING  AS construction_task_complete
+FROM @DATA_LAKE.S3_STAGES.ENCORE_STAGE_RENDER_ASSETS;"
+S3_STAGES,VW_RENDER_TICKETS,"create or replace view DATA_LAKE.S3_STAGES.VW_RENDER_TICKETS(
+	TASK_ID,
+	PROJECT_ID,
+	TASK,
+	PHASE,
+	QTTY,
+	STREET_ADDRESS,
+	ROAD_NAME,
+	STATUS,
+	CONTRACTOR,
+	WORK_PACKAGE,
+	FFP,
+	ASSET_ID,
+	RESOURCE_ID,
+	RESOURCE_USER_NAME,
+	DATE_RELEASED,
+	DATE_COMPLETED,
+	DATE_APPROVED,
+	ACTION,
+	WORK_ACTIVITY,
+	GROUP_ID,
+	NOTES,
+	BLUEPRINTED_DATE,
+	TARGET_DATE,
+    LABELS_GENERAL,
+	LABELS_GRANT_ID,
+	LABELS_WORK_ORDER
+) as
+SELECT
+  $1:""task_id""::STRING            AS task_id,
+  $1:""project_id""::STRING         AS project_id,
+  $1:""task""::STRING               AS task,
+  $1:""phase""::STRING              AS phase,
+
+  /* qtty can be numeric or string; handle both */
+  CASE
+    WHEN TYPEOF($1:""qtty"") IN ('INTEGER','DOUBLE') THEN TO_NUMBER($1:""qtty"")
+    ELSE TRY_TO_NUMBER($1:""qtty""::STRING)
+  END                               AS qtty,
+
+  $1:""street_address""::STRING     AS street_address,
+  $1:""road_name""::STRING          AS road_name,
+  $1:""status""::STRING             AS status,
+  $1:""contractor""::STRING         AS contractor,
+  $1:""work_package""::STRING       AS work_package,
+  $1:""ffp""::STRING                AS ffp,
+  $1:""asset_id""::STRING           AS asset_id,
+  $1:""resource_id""::STRING        AS resource_id,
+  $1:""resource_user_name""::STRING AS resource_user_name,
+
+  /* dates may be native DATE/TIMESTAMP or strings; prefer native, else parse string */
+  COALESCE(
+    IFF(TYPEOF($1:""date_released"")  = 'DATE',        $1:""date_released""::DATE,        NULL),
+    IFF(LEFT(TYPEOF($1:""date_released""),9)='TIMESTAMP', TO_DATE($1:""date_released""::TIMESTAMP_NTZ), NULL),
+    TRY_TO_DATE($1:""date_released""::STRING)
+  ) AS date_released,
+
+  COALESCE(
+    IFF(TYPEOF($1:""date_completed"") = 'DATE',        $1:""date_completed""::DATE,       NULL),
+    IFF(LEFT(TYPEOF($1:""date_completed""),9)='TIMESTAMP', TO_DATE($1:""date_completed""::TIMESTAMP_NTZ), NULL),
+    TRY_TO_DATE($1:""date_completed""::STRING)
+  ) AS date_completed,
+
+  COALESCE(
+    IFF(TYPEOF($1:""date_approved"")  = 'DATE',        $1:""date_approved""::DATE,        NULL),
+    IFF(LEFT(TYPEOF($1:""date_approved""),9)='TIMESTAMP', TO_DATE($1:""date_approved""::TIMESTAMP_NTZ), NULL),
+    TRY_TO_DATE($1:""date_approved""::STRING)
+  ) AS date_approved,
+
+  $1:""action""::STRING             AS action,
+  $1:""work_activity""::STRING      AS work_activity,
+  $1:""group_id""::STRING           AS group_id,
+  $1:""notes""::STRING              AS notes,
+
+  COALESCE(
+    IFF(TYPEOF($1:""blueprinted_date"")='DATE', $1:""blueprinted_date""::DATE, NULL),
+    IFF(LEFT(TYPEOF($1:""blueprinted_date""),9)='TIMESTAMP', TO_DATE($1:""blueprinted_date""::TIMESTAMP_NTZ), NULL),
+    TRY_TO_DATE($1:""blueprinted_date""::STRING)
+  ) AS blueprinted_date,
+
+  COALESCE(
+    IFF(TYPEOF($1:""target_date"")='DATE', $1:""target_date""::DATE, NULL),
+    IFF(LEFT(TYPEOF($1:""target_date""),9)='TIMESTAMP', TO_DATE($1:""target_date""::TIMESTAMP_NTZ), NULL),
+    TRY_TO_DATE($1:""target_date""::STRING)
+  ) AS target_date,
+  
+  $1:""labels_general""::STRING     AS labels_general,
+  $1:""labels_grant_id""::STRING    AS labels_grant_id,
+  $1:""labels_work_order""::STRING  AS labels_work_order
+
+FROM @DATA_LAKE.S3_STAGES.ENCORE_STAGE_RENDER_TICKETS;"
+S3_STAGES,VW_RENDER_UNITS,"create or replace view DATA_LAKE.S3_STAGES.VW_RENDER_UNITS(
+    PROJECT,
+    TASK_ID,
+    STATUS,
+    TASK_TYPE,
+    WORK_PACKAGE,
+    SUBSECTOR,
+    LABELS_GENERAL,
+    LABELS_GRANT_ID,
+    LABELS_JOB_TYPE,
+    LABELS_SUPERVISOR,
+    LABELS_GRANT_AREAS,
+    LABELS_DROP_ADMIN,
+    LABELS_WORK_ORDER,
+    LABELS_DROP_API,
+    LABELS_WORK_CATEGORY,
+    LABELS_ERP_PROJECT_ID,
+    LABELS_FUNDING_POLYGONS,
+    LABELS_BLUEPRINT_ID,
+    ASSET_ID,
+    UNIT_TYPE,
+    RUS_CODE,
+    UNIT_CODE,
+    UNIT_DESCRIPTION,
+    UOM,
+    CONTRACTOR,
+    INSTALLED_PER_TASK_NOTES,
+    CREW_NAME,
+    WORK_ACTIVITY,
+    ACTUAL_QUANTITY,
+    APPROVING_USER,
+    APPROVED_DATE,
+    COMPLETED_DATE,
+    ORIGINAL_COMPLETED_DATE,
+    CHANGE_REQUEST_APPROVAL_NUMBER,
+    CONSTRUCTION_NOTES,
+    TASK_NOTES,
+    PLANNED_QUANTITY,
+    STREET_ADDRESS
+) as
+SELECT
+  $1:""project""::STRING               AS project,
+  $1:""task_id""::STRING               AS task_id,
+  $1:""status""::STRING                AS status,
+  $1:""task_type""::STRING             AS task_type,
+  $1:""work_package""::STRING          AS work_package,
+  $1:""subsector""::STRING             AS subsector,
+  $1:""labels_general""::STRING        AS labels_general,
+  $1:""labels_grant_id""::STRING       AS labels_grant_id,
+  $1:""labels_job_type""::STRING       AS labels_job_type,
+  $1:""labels_supervisor""::STRING     AS labels_supervisor,
+  $1:""labels_grant_areas""::STRING    AS labels_grant_areas,
+  $1:""labels_drop_admin""::STRING     AS labels_drop_admin,
+  $1:""labels_work_order""::STRING     AS labels_work_order,
+  $1:""labels_drop_api""::STRING       AS labels_drop_api,
+  $1:""labels_work_category""::STRING  AS labels_work_category,
+  $1:""labels_erp_project_id""::STRING AS labels_erp_project_id,
+  $1:""labels_funding_polygons""::STRING AS labels_funding_polygons,
+  $1:""labels_blueprint_id""::STRING AS labels_blueprint_id,
+  $1:""asset_id""::STRING              AS asset_id,
+  $1:""unit_type""::STRING             AS unit_type,
+  $1:""rus_code""::STRING              AS rus_code,
+  $1:""unit_code""::STRING             AS unit_code,
+  $1:""unit_description""::STRING      AS unit_description,
+  $1:""uom""::STRING                   AS uom,
+  $1:""contractor""::STRING            AS contractor,
+  $1:""installed_per_task_notes""::STRING AS installed_per_task_notes,
+  $1:""crew_name""::STRING             AS crew_name,
+  $1:""work_activity""::STRING         AS work_activity,
+
+  /* doubles */
+  CASE
+    WHEN TYPEOF($1:""actual_quantity"")  IN ('INTEGER','DOUBLE') THEN $1:""actual_quantity""::FLOAT
+    ELSE TRY_TO_NUMBER($1:""actual_quantity""::STRING)::FLOAT
+  END AS actual_quantity,
+
+  $1:""approving_user""::STRING        AS approving_user,
+
+  /* dates */
+  COALESCE(
+    IFF(TYPEOF($1:""approved_date"")='DATE', $1:""approved_date""::DATE, NULL),
+    IFF(LEFT(TYPEOF($1:""approved_date""),9)='TIMESTAMP', TO_DATE($1:""approved_date""::TIMESTAMP_NTZ), NULL),
+    TRY_TO_DATE($1:""approved_date""::STRING)
+  ) AS approved_date,
+
+  COALESCE(
+    IFF(TYPEOF($1:""completed_date"")='DATE', $1:""completed_date""::DATE, NULL),
+    IFF(LEFT(TYPEOF($1:""completed_date""),9)='TIMESTAMP', TO_DATE($1:""completed_date""::TIMESTAMP_NTZ), NULL),
+    TRY_TO_DATE($1:""completed_date""::STRING)
+  ) AS completed_date,
+
+  COALESCE(
+    IFF(TYPEOF($1:""original_completed_date"")='DATE', $1:""original_completed_date""::DATE, NULL),
+    IFF(LEFT(TYPEOF($1:""original_completed_date""),9)='TIMESTAMP', TO_DATE($1:""original_completed_date""::TIMESTAMP_NTZ), NULL),
+    TRY_TO_DATE($1:""original_completed_date""::STRING)
+  ) AS original_completed_date,
+
+  $1:""change_request_approval_number""::STRING AS change_request_approval_number,
+  $1:""construction_notes""::STRING             AS construction_notes,
+  $1:""task_notes""::STRING                     AS task_notes,
+
+  CASE
+    WHEN TYPEOF($1:""planned_quantity"") IN ('INTEGER','DOUBLE') THEN $1:""planned_quantity""::FLOAT
+    ELSE TRY_TO_NUMBER($1:""planned_quantity""::STRING)::FLOAT
+  END AS planned_quantity,
+
+  $1:""street_address""::STRING         AS street_address
+FROM @DATA_LAKE.S3_STAGES.ENCORE_STAGE_RENDER_UNITS;"
+S3_STAGES,VW_VETRO_LOCATIONS,"CREATE OR REPLACE VIEW DATA_LAKE.S3_STAGES.VW_VETRO_LOCATIONS AS
+SELECT
+  /* doubles with robust casting */
+  CASE
+    WHEN TYPEOF($1:""longitude"") IN ('INTEGER','DOUBLE') THEN $1:""longitude""::FLOAT
+    ELSE TRY_TO_NUMBER($1:""longitude""::STRING)::FLOAT
+  END AS longitude,
+  CASE
+    WHEN TYPEOF($1:""latitude"")  IN ('INTEGER','DOUBLE') THEN $1:""latitude""::FLOAT
+    ELSE TRY_TO_NUMBER($1:""latitude""::STRING)::FLOAT
+  END AS latitude,
+
+  /* strings */
+  $1:""v_layer""::STRING                  AS v_layer,
+  $1:""v_project""::STRING                AS v_project,
+  $1:""v_plan""::STRING                   AS v_plan,
+  $1:""v_status""::STRING                 AS v_status,
+  $1:""id""::STRING                       AS id,
+  $1:""address""::STRING                  AS address,
+  $1:""street_address""::STRING           AS street_address,
+  $1:""house_number""::STRING             AS house_number,
+  $1:""street_name""::STRING              AS street_name,
+  $1:""street_suffix""::STRING            AS street_suffix,
+  $1:""street_direction""::STRING         AS street_direction,
+  $1:""city""::STRING                     AS city,
+  $1:""state""::STRING                    AS state,
+  $1:""zip_code""::STRING                 AS zip_code,
+  $1:""building_type""::STRING            AS building_type,
+  $1:""note""::STRING                     AS note,
+  $1:""drop_type""::STRING                AS drop_type,
+  $1:""build""::STRING                    AS build,
+  $1:""rec_member""::STRING               AS rec_member,
+  $1:""address_type""::STRING             AS address_type,
+  $1:""deferred_build""::STRING           AS deferred_build,
+  $1:""unit_number""::STRING              AS unit_number,
+  $1:""fiber_availability_status""::STRING AS fiber_availability_status,
+  $1:""status""::STRING                   AS status,
+  $1:""prem_id""::STRING                  AS prem_id,
+  $1:""premise_id""::STRING               AS premise_id,
+  $1:""nisc_service_location""::STRING    AS nisc_service_location,
+  $1:""fabric_id""::STRING                AS fabric_id,
+  $1:""service_zone_id""::STRING          AS service_zone_id,
+  $1:""vetro_id""::STRING                 AS vetro_id
+FROM @DATA_LAKE.S3_STAGES.ENCORE_STAGE_VETRO_LOCATIONS;"

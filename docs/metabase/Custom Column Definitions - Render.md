@@ -497,7 +497,7 @@ if(
 )
 ```
 
-### IsDisapproved
+### Is Rejected
 
 ```java
 contains([Labels General (norm)], "disapproved")

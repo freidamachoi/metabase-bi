@@ -1,0 +1,2 @@
+TABLE_SCHEMA,TABLE_NAME,TABLE_TYPE,COMMENT
+ANALYTICS,DROP_BURY_DT,BASE TABLE,"The table contains records construction activities, specifically drop and bury operations leveraging Render tickets. Each record represents a single task and includes details about the project, assets, contractors, and work activities involved."
