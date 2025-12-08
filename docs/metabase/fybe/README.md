@@ -47,6 +47,13 @@ Models in this directory:
   - Filter: `UNIT_TYPE = 'Material'`
   - Custom Columns: 7 custom fields for status tracking and categorization
 
+- **Render Tickets (Enriched)** - Comprehensive ticket workflow tracking with time analysis
+  - Documentation: [`models/RENDER_TICKETS_ENRICHED.md`](./models/RENDER_TICKETS_ENRICHED.md)
+  - Semantic Types: [`models/RENDER_TICKETS_ENRICHED_SEMANTIC_TYPES.md`](./models/RENDER_TICKETS_ENRICHED_SEMANTIC_TYPES.md)
+  - Base Model: Render Tickets (Base)
+  - Filter: Inherits `CONTRACTOR != 'Fybe'` from base
+  - Custom Columns: 19 custom fields including workflow tracking, time calculations, and enhanced status
+
 ## Related Files
 
 - Snowflake queries: `snowflake/fybe/queries/`
