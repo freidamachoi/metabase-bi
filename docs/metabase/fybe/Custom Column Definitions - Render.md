@@ -819,7 +819,7 @@ if(
 )
 ```
 
-### IsDisapproved
+### Is Rejected
 
 ```java
 contains([Labels General (norm)], "disapproved")
@@ -1367,6 +1367,28 @@ case(
     now(),
     "day"
   )
+)
+```
+
+### Task Stage
+
+```java
+case(
+  [Is Rejected],
+  "Rejected",
+  [In Jeopardy],
+  "Placed in Jeopardy",
+  NOT [Is Completed]
+  AND NOT isNull([Days to Due])
+  AND [Days to Due] <= 0,
+  "Overdue",
+  NOT [NLR]
+  AND NOT [Is Completed]
+  AND NOT isNull([Days to Due])
+  AND [Days to Due] > 0
+  AND [Days to Due] <= 3,
+  "Jeopardy",
+  [Task Status]
 )
 ```
 

@@ -26,6 +26,11 @@ Current models include:
 - **Service Orders Charges by Type** - Charges aggregated by type
 - **Service Orders Commission Detail** - Detailed commission information
 - **Combined Installs and Trouble Tickets** - Unified view of installations and trouble tickets
+- **Appointments with Orders and Tickets (Base)** - All appointments with related service orders or trouble tickets
+  - Documentation: [`models/APPOINTMENTS_WITH_ORDERS_AND_TICKETS.md`](./models/APPOINTMENTS_WITH_ORDERS_AND_TICKETS.md)
+  - Semantic Types: [`models/APPOINTMENTS_WITH_ORDERS_AND_TICKETS_SEMANTIC_TYPES.md`](./models/APPOINTMENTS_WITH_ORDERS_AND_TICKETS_SEMANTIC_TYPES.md)
+  - Source: `snowflake/camvio/queries/appointments_with_orders_and_tickets.sql`
+  - Includes feature pricing aggregates for service order appointments
 
 Each model may have multiple documentation files:
 - `*_SEMANTIC_TYPES.md` - Recommended semantic type settings
