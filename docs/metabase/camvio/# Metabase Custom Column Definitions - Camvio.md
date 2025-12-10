@@ -31,7 +31,7 @@ trim(
           2,
           length(
             splitPart([Status Clean], " ", 1)
-          )
+          ) - 1
         )
       )
     ),
@@ -54,7 +54,7 @@ trim(
               2,
               length(
                 splitPart([Status Clean], " ", 2)
-              )
+              ) - 1
             )
           )
         )
@@ -79,7 +79,7 @@ trim(
               2,
               length(
                 splitPart([Status Clean], " ", 3)
-              )
+              ) - 1
             )
           )
         )
@@ -104,7 +104,7 @@ trim(
               2,
               length(
                 splitPart([Status Clean], " ", 4)
-              )
+              ) - 1
             )
           )
         )
@@ -129,7 +129,7 @@ trim(
               2,
               length(
                 splitPart([Status Clean], " ", 5)
-              )
+              ) - 1
             )
           )
         )
@@ -154,7 +154,7 @@ trim(
               2,
               length(
                 splitPart([Status Clean], " ", 6)
-              )
+              ) - 1
             )
           )
         )
@@ -193,7 +193,7 @@ trim(
           2,
           length(
             splitPart([Serviceorder Type Clean], " ", 1)
-          )
+          ) - 1
         )
       )
     ),
@@ -216,7 +216,7 @@ trim(
               2,
               length(
                 splitPart([Serviceorder Type Clean], " ", 2)
-              )
+              ) - 1
             )
           )
         )
@@ -241,7 +241,7 @@ trim(
               2,
               length(
                 splitPart([Serviceorder Type Clean], " ", 3)
-              )
+              ) - 1
             )
           )
         )
@@ -266,7 +266,7 @@ trim(
               2,
               length(
                 splitPart([Serviceorder Type Clean], " ", 4)
-              )
+              ) - 1
             )
           )
         )
@@ -291,7 +291,7 @@ trim(
               2,
               length(
                 splitPart([Serviceorder Type Clean], " ", 5)
-              )
+              ) - 1
             )
           )
         )
@@ -316,7 +316,7 @@ trim(
               2,
               length(
                 splitPart([Serviceorder Type Clean], " ", 6)
-              )
+              ) - 1
             )
           )
         )
@@ -345,7 +345,7 @@ trim(
           2,
           length(
             splitPart([Address City], " ", 1)
-          )
+          ) - 1
         )
       )
     ),
@@ -368,7 +368,7 @@ trim(
               2,
               length(
                 splitPart([Address City], " ", 2)
-              )
+              ) - 1
             )
           )
         )
@@ -393,7 +393,7 @@ trim(
               2,
               length(
                 splitPart([Address City], " ", 3)
-              )
+              ) - 1
             )
           )
         )
@@ -418,7 +418,7 @@ trim(
               2,
               length(
                 splitPart([Address City], " ", 4)
-              )
+              ) - 1
             )
           )
         )
@@ -443,7 +443,7 @@ trim(
               2,
               length(
                 splitPart([Address City], " ", 5)
-              )
+              ) - 1
             )
           )
         )
@@ -468,7 +468,7 @@ trim(
               2,
               length(
                 splitPart([Address City], " ", 6)
-              )
+              ) - 1
             )
           )
         )
