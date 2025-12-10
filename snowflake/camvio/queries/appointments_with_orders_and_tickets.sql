@@ -1,169 +1,265 @@
 -- ============================================================================
--- Appointments with Service Orders and Trouble Tickets
+-- Service Orders and Trouble Tickets with Appointments (Base)
 -- ============================================================================
--- Purpose: Get all appointments with their associated service orders or trouble tickets
+-- Purpose: Get all service orders and trouble tickets, with appointments when they exist
 -- 
--- Logic:
--- - APPOINTMENT_TYPE = "O" (letter O) → Related to Service Order (join via ORDER_ID)
--- - APPOINTMENT_TYPE = "TT" → Related to Trouble Ticket (join via TROUBLE_TICKET_ID)
--- Note: APPOINTMENT_TYPE is a string field - comparisons are case-insensitive and trimmed
+-- Architecture:
+-- - UNION ALL of SERVICEORDERS and TROUBLE_TICKETS (base data)
+-- - Feature aggregates for service orders
+-- - Concatenated notes for trouble tickets
+-- - OUTER JOIN to APPOINTMENTS (when they exist)
+-- - Supporting tables: SERVICELINES, SERVICELINE_ADDRESSES, CUSTOMER_ACCOUNTS
 --
 -- METABASE USAGE:
--- This query can be used as a BASE MODEL in Metabase to show all appointments
--- with their related service orders or trouble tickets
+-- This query can be used as a BASE MODEL in Metabase to show all service orders
+-- and trouble tickets, with appointments as optional enrichment. This provides
+-- complete coverage of all records, not just those with appointments.
 -- ============================================================================
 
-SELECT 
-    -- Appointment Fields
-    a.APPOINTMENT_ID,
-    a.APPOINTMENT_TYPE,
-    a.APPOINTMENT_TYPE_DESCRIPTION,
-    a.APPOINTMENT_DATE,
-    a.ORDER_ID,  -- Numeric ORDER_ID from appointments
-    a.TROUBLE_TICKET_ID,  -- Numeric TROUBLE_TICKET_ID from appointments
-    a.ACCOUNT_ID,
-    a.SERVICELINE_NUMBER,  -- VARCHAR for fallback joins
-    
-    -- Service Order Fields (populated when APPOINTMENT_TYPE = "0")
-    so.SERVICEORDER_ID,
-    so.ORDER_ID AS SO_ORDER_ID,    -- Service order ORDER_ID (numeric)
-    so.STATUS AS SO_STATUS,
-    so.SERVICEORDER_TYPE,
-    CAST(so.SERVICELINE_NUMBER AS VARCHAR) AS SO_SERVICELINE_NUMBER,  -- VARCHAR for fallback joins
-    so.ACCOUNT_ID AS SO_ACCOUNT_ID,
-    -- Service Model from service line (always available for service orders with service lines)
-    sl.SERVICE_MODEL,
-    -- Service Line Address (from SERVICELINE_ADDRESSES)
-    sa.SERVICELINE_ADDRESS_CITY,
-    -- Feature aggregates for service orders (NULL for trouble tickets or service orders without features)
-    fa.TOTAL_FEATURE_PRICE,
-    fa.TOTAL_FEATURE_AMOUNT,
-    fa.FEATURE_COUNT,
-    fa.TOTAL_FEATURE_QUANTITY,
-    
-    -- Trouble Ticket Fields (populated when APPOINTMENT_TYPE = "TT")
-    tt.TROUBLE_TICKET_ID AS TT_TROUBLE_TICKET_ID,  -- Numeric trouble ticket ID from TROUBLE_TICKETS table
-    tt.STATUS AS TT_STATUS,
-    CAST(tt.SERVICELINE_NUMBER AS VARCHAR) AS TT_SERVICELINE_NUMBER,  -- VARCHAR for fallback joins
-    tt.ACCOUNT_ID AS TT_ACCOUNT_ID,
-    
-    -- Common Fields
-    ca.ACCOUNT_TYPE,
-    
-    -- Indicator Fields
-    CASE 
-        WHEN a.APPOINTMENT_TYPE = 'O' THEN 'Service Order'  -- 'O' (letter O) for service orders
-        WHEN a.APPOINTMENT_TYPE = 'TT' THEN 'Trouble Ticket'  -- 'TT' for trouble tickets
-        ELSE 'Unknown'
-    END AS APPOINTMENT_RELATION_TYPE,
-    
-    CASE 
-        WHEN a.APPOINTMENT_TYPE = 'O' AND so.SERVICEORDER_ID IS NOT NULL THEN true  -- 'O' (letter O) for service orders
-        WHEN a.APPOINTMENT_TYPE = 'TT' AND tt.TROUBLE_TICKET_ID IS NOT NULL THEN true  -- 'TT' for trouble tickets
-        ELSE false
-    END AS HAS_RELATED_RECORD
-
-FROM (
-    -- Subquery to safely read ORDER_ID by casting to VARCHAR first to avoid read error
-    -- This avoids the "Numeric value 'I_0000009005' is not recognized" error during table read
-    -- ORDER_ID column is numeric but contains some string values - we convert those to NULL
+WITH base_data AS (
+    -- Service Orders
     SELECT 
-        APPOINTMENT_ID,
-        UPPER(TRIM(APPOINTMENT_TYPE)) AS APPOINTMENT_TYPE,  -- Normalize: uppercase and trim for consistent comparison
-        APPOINTMENT_TYPE_DESCRIPTION,
-        APPOINTMENT_DATE,
-        TRY_TO_NUMBER(ORDER_ID::VARCHAR) AS ORDER_ID,  -- Cast to VARCHAR first, then convert to number (NULL if fails)
-        TRY_TO_NUMBER(TROUBLE_TICKET_ID::VARCHAR) AS TROUBLE_TICKET_ID,  -- Convert to number, NULL if conversion fails
-        ACCOUNT_ID,
-        CAST(SERVICELINE_NUMBER AS VARCHAR) AS SERVICELINE_NUMBER  -- Cast to VARCHAR for fallback joins
-    FROM CAMVIO.PUBLIC.APPOINTMENTS
-) a
+        'Service Order' AS RECORD_TYPE,
+        
+        -- Common Identifiers
+        so.ACCOUNT_ID,
+        CAST(so.SERVICELINE_NUMBER AS VARCHAR) AS SERVICELINE_NUMBER,
+        
+        -- Service Order Specific Fields
+        so.SERVICEORDER_ID,
+        so.ORDER_ID,
+        so.STATUS,
+        so.SERVICEORDER_TYPE,
+        INITCAP(REPLACE(so.SALES_AGENT, '.', ' ')) AS SALES_AGENT,  -- Required: Sales agent for commissions (title case, split on '.')
+        
+        -- Trouble Ticket Specific Fields (NULL for service orders)
+        CAST(NULL AS NUMBER) AS TROUBLE_TICKET_ID,
+        CAST(NULL AS TEXT) AS REPORTED_NAME,
+        CAST(NULL AS TEXT) AS RESOLUTION_NAME,
+        CAST(NULL AS TEXT) AS TROUBLE_TICKET_NOTES,
+        
+        -- Join Keys for Appointments
+        so.ORDER_ID AS APPOINTMENT_JOIN_ORDER_ID,
+        CAST(NULL AS NUMBER) AS APPOINTMENT_JOIN_TROUBLE_TICKET_ID,
+        so.SERVICELINE_NUMBER AS APPOINTMENT_JOIN_SERVICELINE_NUMBER,
+        so.ACCOUNT_ID AS APPOINTMENT_JOIN_ACCOUNT_ID
+        
+    FROM CAMVIO.PUBLIC.SERVICEORDERS so
+    WHERE CAST(so.SERVICELINE_NUMBER AS VARCHAR) NOT IN ('0', '0000000000')
+        AND so.SERVICELINE_NUMBER IS NOT NULL
+    
+    UNION ALL
+    
+    -- Trouble Tickets
+    SELECT 
+        'Trouble Ticket' AS RECORD_TYPE,
+        
+        -- Common Identifiers
+        tt.ACCOUNT_ID,
+        CAST(tt.SERVICELINE_NUMBER AS VARCHAR) AS SERVICELINE_NUMBER,
+        
+        -- Service Order Specific Fields (NULL for trouble tickets)
+        CAST(NULL AS NUMBER) AS SERVICEORDER_ID,
+        CAST(NULL AS NUMBER) AS ORDER_ID,
+        tt.STATUS,
+        CAST(NULL AS TEXT) AS SERVICEORDER_TYPE,
+        CAST(NULL AS TEXT) AS SALES_AGENT,
+        
+        -- Trouble Ticket Specific Fields
+        tt.TROUBLE_TICKET_ID,
+        tt.REPORTED_NAME,
+        tt.RESOLUTION_NAME,
+        ttn.CONCATENATED_NOTES AS TROUBLE_TICKET_NOTES,
+        
+        -- Join Keys for Appointments
+        CAST(NULL AS NUMBER) AS APPOINTMENT_JOIN_ORDER_ID,
+        tt.TROUBLE_TICKET_ID AS APPOINTMENT_JOIN_TROUBLE_TICKET_ID,
+        tt.SERVICELINE_NUMBER AS APPOINTMENT_JOIN_SERVICELINE_NUMBER,
+        tt.ACCOUNT_ID AS APPOINTMENT_JOIN_ACCOUNT_ID
+        
+    FROM CAMVIO.PUBLIC.TROUBLE_TICKETS tt
+    
+    -- Concatenate trouble ticket notes per trouble ticket ID
+    LEFT JOIN (
+        SELECT
+            TROUBLE_TICKET_ID,
+            LISTAGG(NOTE, ' | ') WITHIN GROUP (ORDER BY CREATED_DATETIME) AS CONCATENATED_NOTES
+        FROM CAMVIO.PUBLIC.TROUBLE_TICKET_NOTES
+        WHERE NOTE IS NOT NULL
+            AND TRIM(NOTE) != ''
+        GROUP BY TROUBLE_TICKET_ID
+    ) ttn
+        ON tt.TROUBLE_TICKET_ID = ttn.TROUBLE_TICKET_ID
+    
+    WHERE CAST(tt.SERVICELINE_NUMBER AS VARCHAR) NOT IN ('0', '0000000000')
+        AND tt.SERVICELINE_NUMBER IS NOT NULL
+),
 
--- Join to Customer Accounts (common to both)
-LEFT JOIN CAMVIO.PUBLIC.CUSTOMER_ACCOUNTS ca
-    ON a.ACCOUNT_ID = ca.ACCOUNT_ID
-
--- Join to Service Orders when APPOINTMENT_TYPE = "O" (letter O)
--- Join using ORDER_ID (better join field than SERVICELINE_NUMBER + ACCOUNT_ID)
--- APPOINTMENT_TYPE is normalized to uppercase in subquery, so 'O' matches regardless of case
-LEFT JOIN CAMVIO.PUBLIC.SERVICEORDERS so
-    ON a.APPOINTMENT_TYPE = 'O'  -- 'O' (letter O) for service orders
-    AND (
-        -- Primary join: ORDER_ID (when conversion succeeded)
-        (a.ORDER_ID IS NOT NULL AND a.ORDER_ID = so.ORDER_ID)
-        OR
-        -- Fallback join: SERVICELINE_NUMBER + ACCOUNT_ID (when ORDER_ID conversion failed)
-        (a.SERVICELINE_NUMBER = CAST(so.SERVICELINE_NUMBER AS VARCHAR) AND a.ACCOUNT_ID = so.ACCOUNT_ID)
-    )
-
--- Join to Service Lines to get SERVICE_MODEL (always available for service orders with service lines)
-LEFT JOIN CAMVIO.PUBLIC.SERVICELINES sl
-    ON so.SERVICELINE_NUMBER = sl.SERVICELINE_NUMBER
-
--- Join to Service Line Addresses to get address information
-LEFT JOIN CAMVIO.PUBLIC.SERVICELINE_ADDRESSES sa
-    ON so.SERVICELINE_NUMBER = sa.SERVICELINE_NUMBER
-
--- Feature aggregates (only for service orders with features)
--- Exclude invalid SERVICELINE_NUMBER values ('0', '0000000000') from aggregation
-LEFT JOIN (
+-- Feature aggregates for service orders (exclude invalid SERVICELINE_NUMBER values)
+feature_aggregates AS (
     SELECT
         sf.SERVICELINE_NUMBER,
         COUNT(DISTINCT sf.FEATURE) AS FEATURE_COUNT,
-        SUM(sf.FEATURE_PRICE * sf.QTY) AS TOTAL_FEATURE_PRICE,  -- Total price (price × quantity) for all features
-        SUM(sf.FEATURE_PRICE * sf.QTY) AS TOTAL_FEATURE_AMOUNT,  -- Total amount (price × quantity) for all features
+        SUM(sf.FEATURE_PRICE * sf.QTY) AS TOTAL_FEATURE_PRICE,
+        SUM(sf.FEATURE_PRICE * sf.QTY) AS TOTAL_FEATURE_AMOUNT,
         SUM(sf.QTY) AS TOTAL_FEATURE_QUANTITY
     FROM CAMVIO.PUBLIC.SERVICELINE_FEATURES sf
     WHERE CAST(sf.SERVICELINE_NUMBER AS VARCHAR) NOT IN ('0', '0000000000')
         AND sf.SERVICELINE_NUMBER IS NOT NULL
     GROUP BY sf.SERVICELINE_NUMBER
-) fa
-    ON so.SERVICELINE_NUMBER = fa.SERVICELINE_NUMBER
+)
 
--- Join to Trouble Tickets when APPOINTMENT_TYPE = "TT"
--- Join using TROUBLE_TICKET_ID (better join field than SERVICELINE_NUMBER + ACCOUNT_ID)
--- APPOINTMENT_TYPE is normalized to uppercase in subquery, so 'TT' matches regardless of case
-LEFT JOIN CAMVIO.PUBLIC.TROUBLE_TICKETS tt
-    ON a.APPOINTMENT_TYPE = 'TT'  -- 'TT' for trouble tickets
-    AND (
-        -- Primary join: TROUBLE_TICKET_ID (when conversion succeeded)
-        (a.TROUBLE_TICKET_ID IS NOT NULL AND a.TROUBLE_TICKET_ID = tt.TROUBLE_TICKET_ID)
+SELECT 
+    -- Record Type
+    bd.RECORD_TYPE,
+    
+    -- Common Identifiers
+    bd.ACCOUNT_ID,
+    bd.SERVICELINE_NUMBER,
+    
+    -- Service Order Fields
+    bd.SERVICEORDER_ID,
+    bd.ORDER_ID,
+    bd.STATUS,
+    bd.SERVICEORDER_TYPE,
+    bd.SALES_AGENT,
+    
+    -- Feature Aggregates (populated for service orders with features)
+    fa.TOTAL_FEATURE_PRICE,
+    fa.TOTAL_FEATURE_AMOUNT,
+    fa.FEATURE_COUNT,
+    fa.TOTAL_FEATURE_QUANTITY,
+    
+    -- Trouble Ticket Fields
+    bd.TROUBLE_TICKET_ID,
+    bd.REPORTED_NAME,
+    bd.RESOLUTION_NAME,
+    bd.TROUBLE_TICKET_NOTES,
+    
+    -- Service Model: SERVICEORDER_ADDRESSES for service orders, SERVICELINES for trouble tickets
+    COALESCE(soa.SERVICE_MODEL, sl.SERVICE_MODEL) AS SERVICE_MODEL,
+    -- Address City: SERVICELINE_ADDRESSES for both (serviceline level), SERVICEORDER_ADDRESSES as fallback for service orders
+    COALESCE(sla.SERVICELINE_ADDRESS_CITY, soa.SERVICEORDER_ADDRESS_CITY) AS ADDRESS_CITY,
+    
+    -- Account Information
+    ca.ACCOUNT_TYPE,
+    
+    -- Appointment Fields (NULL when no appointment exists)
+    a.APPOINTMENT_ID,
+    a.APPOINTMENT_TYPE,
+    a.APPOINTMENT_TYPE_DESCRIPTION,
+    a.APPOINTMENT_DATE,
+    a.ORDER_ID AS APPOINTMENT_ORDER_ID,
+    a.TROUBLE_TICKET_ID AS APPOINTMENT_TROUBLE_TICKET_ID,
+    
+    -- Indicator Fields
+    CASE 
+        WHEN a.APPOINTMENT_ID IS NOT NULL THEN true
+        ELSE false
+    END AS HAS_APPOINTMENT
+
+FROM base_data bd
+
+-- Join Feature Aggregates (only for service orders)
+LEFT JOIN feature_aggregates fa
+    ON bd.RECORD_TYPE = 'Service Order'
+    AND bd.SERVICELINE_NUMBER = fa.SERVICELINE_NUMBER
+
+-- Join Service Order Addresses for service orders (SERVICE_MODEL and city)
+LEFT JOIN CAMVIO.PUBLIC.SERVICEORDER_ADDRESSES soa
+    ON bd.RECORD_TYPE = 'Service Order'
+    AND bd.SERVICEORDER_ID = soa.SERVICEORDER_ID
+
+-- Join Service Lines for SERVICE_MODEL (for trouble tickets, fallback for service orders)
+LEFT JOIN CAMVIO.PUBLIC.SERVICELINES sl
+    ON bd.SERVICELINE_NUMBER = sl.SERVICELINE_NUMBER
+
+-- Join Service Line Addresses for all records (city fallback for service orders, primary for trouble tickets)
+LEFT JOIN CAMVIO.PUBLIC.SERVICELINE_ADDRESSES sla
+    ON bd.SERVICELINE_NUMBER = sla.SERVICELINE_NUMBER
+
+-- Join Customer Accounts for account type
+LEFT JOIN CAMVIO.PUBLIC.CUSTOMER_ACCOUNTS ca
+    ON bd.ACCOUNT_ID = ca.ACCOUNT_ID
+
+-- OUTER JOIN to Appointments (when they exist)
+-- Join using ORDER_ID for service orders, TROUBLE_TICKET_ID for trouble tickets
+-- Fallback to SERVICELINE_NUMBER + ACCOUNT_ID if ID conversion failed
+LEFT JOIN (
+    -- Subquery to safely read ORDER_ID by casting to VARCHAR first to avoid read error
+    SELECT 
+        APPOINTMENT_ID,
+        UPPER(TRIM(APPOINTMENT_TYPE)) AS APPOINTMENT_TYPE,
+        APPOINTMENT_TYPE_DESCRIPTION,
+        APPOINTMENT_DATE,
+        TRY_TO_NUMBER(ORDER_ID::VARCHAR) AS ORDER_ID,
+        TRY_TO_NUMBER(TROUBLE_TICKET_ID::VARCHAR) AS TROUBLE_TICKET_ID,
+        ACCOUNT_ID,
+        CAST(SERVICELINE_NUMBER AS VARCHAR) AS SERVICELINE_NUMBER
+    FROM CAMVIO.PUBLIC.APPOINTMENTS
+    WHERE CAST(SERVICELINE_NUMBER AS VARCHAR) NOT IN ('0', '0000000000')
+        AND SERVICELINE_NUMBER IS NOT NULL
+) a
+    ON (
+        -- Service Order joins: ORDER_ID (primary) or SERVICELINE_NUMBER + ACCOUNT_ID (fallback)
+        (bd.RECORD_TYPE = 'Service Order' 
+         AND (
+             (bd.APPOINTMENT_JOIN_ORDER_ID IS NOT NULL AND a.ORDER_ID = bd.APPOINTMENT_JOIN_ORDER_ID)
+             OR
+             (bd.SERVICELINE_NUMBER = a.SERVICELINE_NUMBER AND bd.ACCOUNT_ID = a.ACCOUNT_ID)
+         ))
         OR
-        -- Fallback join: SERVICELINE_NUMBER + ACCOUNT_ID (when TROUBLE_TICKET_ID conversion failed)
-        (a.SERVICELINE_NUMBER = CAST(tt.SERVICELINE_NUMBER AS VARCHAR) AND a.ACCOUNT_ID = tt.ACCOUNT_ID)
+        -- Trouble Ticket joins: TROUBLE_TICKET_ID (primary) or SERVICELINE_NUMBER + ACCOUNT_ID (fallback)
+        (bd.RECORD_TYPE = 'Trouble Ticket'
+         AND (
+             (bd.APPOINTMENT_JOIN_TROUBLE_TICKET_ID IS NOT NULL AND a.TROUBLE_TICKET_ID = bd.APPOINTMENT_JOIN_TROUBLE_TICKET_ID)
+             OR
+             (bd.SERVICELINE_NUMBER = a.SERVICELINE_NUMBER AND bd.ACCOUNT_ID = a.ACCOUNT_ID)
+         ))
     )
 
-WHERE a.SERVICELINE_NUMBER NOT IN ('0', '0000000000')
-    AND a.SERVICELINE_NUMBER IS NOT NULL
-
-ORDER BY a.APPOINTMENT_DATE DESC NULLS LAST, a.APPOINTMENT_ID;
+ORDER BY 
+    CASE WHEN a.APPOINTMENT_DATE IS NOT NULL THEN 0 ELSE 1 END,  -- Appointments first
+    a.APPOINTMENT_DATE DESC NULLS LAST,
+    bd.RECORD_TYPE,
+    bd.SERVICEORDER_ID NULLS LAST,
+    bd.TROUBLE_TICKET_ID NULLS LAST;
 
 -- ============================================================================
 -- Query Structure:
 -- 
--- Uses LEFT JOINs to include all appointments, even if the related
--- service order or trouble ticket doesn't exist (or join keys don't match)
+-- Uses UNION ALL to combine SERVICEORDERS and TROUBLE_TICKETS, then
+-- OUTER JOINs to APPOINTMENTS to include appointments when they exist.
+-- This provides complete coverage of all service orders and trouble tickets,
+-- regardless of whether they have appointments.
 --
 -- Key Fields:
--- - APPOINTMENT_ID: Unique appointment identifier
--- - APPOINTMENT_TYPE: "O" (letter O) for service orders, "TT" for trouble tickets
--- - APPOINTMENT_RELATION_TYPE: Human-readable type indicator
--- - HAS_RELATED_RECORD: Boolean indicating if join was successful
+-- - RECORD_TYPE: "Service Order" or "Trouble Ticket" (distinguishes the source)
+-- - SERVICEORDER_ID: Service order identifier (NULL for trouble tickets)
+-- - TROUBLE_TICKET_ID: Trouble ticket identifier (NULL for service orders)
+-- - ACCOUNT_ID, SERVICELINE_NUMBER: Common fields (available for both types)
+-- - HAS_APPOINTMENT: Boolean indicating if an appointment exists
 --
--- Service Order Fields (when APPOINTMENT_TYPE = "O"):
--- - SERVICEORDER_ID, SO_STATUS, SERVICEORDER_TYPE, SERVICE_MODEL (from SERVICELINES), SERVICELINE_ADDRESS_CITY, etc.
+-- Service Order Fields:
+-- - SERVICEORDER_ID, ORDER_ID, STATUS, SERVICEORDER_TYPE, SALES_AGENT
+-- - Feature aggregates (TOTAL_FEATURE_PRICE, etc.) - only populated when features exist
 --
--- Trouble Ticket Fields (when APPOINTMENT_TYPE = "TT"):
--- - TROUBLE_TICKET_ID, TT_STATUS, etc.
+-- Trouble Ticket Fields:
+-- - TROUBLE_TICKET_ID, STATUS, REPORTED_NAME, RESOLUTION_NAME
+-- - TROUBLE_TICKET_NOTES: Concatenated notes per trouble ticket (separated by ' | ')
+--
+-- Appointment Fields (NULL when no appointment):
+-- - APPOINTMENT_ID, APPOINTMENT_TYPE, APPOINTMENT_TYPE_DESCRIPTION, APPOINTMENT_DATE
+--
+-- Common Fields (available for both):
+-- - SERVICE_MODEL (from SERVICEORDER_ADDRESSES for service orders, SERVICELINES for trouble tickets)
+-- - ADDRESS_CITY (from SERVICELINE_ADDRESSES for both types, with SERVICEORDER_ADDRESSES as fallback for service orders)
+-- - ACCOUNT_TYPE (from CUSTOMER_ACCOUNTS)
 --
 -- Usage Notes:
--- - Filter by APPOINTMENT_TYPE to see only service orders or trouble tickets
--- - Use HAS_RELATED_RECORD to identify appointments without matching records
--- - Primary join keys: ORDER_ID (for service orders) and TROUBLE_TICKET_ID (for trouble tickets)
--- - Fallback join keys: SERVICELINE_NUMBER + ACCOUNT_ID (used when ID is NULL or conversion failed)
--- - ORDER_ID and TROUBLE_TICKET_ID are numeric across all tables
--- - Excludes appointments where SERVICELINE_NUMBER is '0' or '0000000000' (invalid service line numbers)
--- - Feature aggregates subquery also excludes invalid SERVICELINE_NUMBER values to prevent incorrect calculations
--- - SERVICE_MODEL comes from SERVICELINES table (always available for service orders with service lines)
--- - Feature aggregates only populated when service orders have features
+-- - Filter by RECORD_TYPE to see only service orders or trouble tickets
+-- - Filter by HAS_APPOINTMENT to see records with/without appointments
+-- - Feature aggregates only populated for service orders with features
+-- - Trouble ticket notes are concatenated per trouble ticket ID
+-- - Excludes records where SERVICELINE_NUMBER is '0' or '0000000000' (invalid service line numbers)
 -- ============================================================================
