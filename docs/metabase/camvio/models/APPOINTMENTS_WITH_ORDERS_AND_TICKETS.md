@@ -107,8 +107,15 @@ These fields will be **NULL for**:
 | `REPORTED_NAME` | TEXT | Entity Name | Name of person who reported the trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
 | `RESOLUTION_NAME` | TEXT | Entity Name | Name of person who resolved the trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
 | `TROUBLE_TICKET_NOTES` | TEXT | Description | Concatenated notes per trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
+| `TOTAL_DURATION_DAYS` | NUMBER | Duration | Total duration in days (converted from seconds) | Available for all trouble tickets, calculated from sum of task durations / 86400 |
+| `LATEST_OPEN_TASK_NAME` | TEXT | Category | Name of the latest open task | Only populated for non-CLOSED trouble tickets |
+| `LATEST_OPEN_TASK_ASSIGNEE` | TEXT | Entity Name | Assignee of the latest open task | Only populated for non-CLOSED trouble tickets |
+| `LATEST_OPEN_TASK_STARTED` | TIMESTAMP | Creation Timestamp | Start date/time of the latest open task | Only populated for non-CLOSED trouble tickets |
 | `SERVICE_MODEL` | TEXT | Category | Service model | SERVICEORDER_ADDRESSES for service orders, SERVICELINES for trouble tickets |
 | `ADDRESS_CITY` | TEXT | City | Address city | SERVICELINE_ADDRESS_CITY for both types (serviceline level), SERVICEORDER_ADDRESS_CITY as fallback for service orders |
+| `CREATED_DATETIME` | TIMESTAMP | Creation Timestamp | Record creation date/time | From SERVICEORDERS for service orders, TROUBLE_TICKETS for trouble tickets |
+| `MODIFIED_DATETIME` | TIMESTAMP | Modification Timestamp | Record last modification date/time | From SERVICEORDERS for service orders, TROUBLE_TICKETS for trouble tickets |
+| `SERVICELINE_CREATED_DATETIME` | TIMESTAMP | Creation Timestamp | Service line creation date/time | From SERVICELINES.SERVICELINE_STARTDATE (available for both service orders and trouble tickets via SERVICELINE_NUMBER) |
 | `ACCOUNT_TYPE` | TEXT | Category | Account type classification | From CUSTOMER_ACCOUNTS |
 | `TOTAL_FEATURE_PRICE` | NUMBER | Currency | Sum of (feature price × quantity) | Only populated for service orders with features |
 | `TOTAL_FEATURE_AMOUNT` | NUMBER | Currency | Sum of (feature price × quantity) | Only populated for service orders with features |
@@ -155,6 +162,8 @@ These fields will be **NULL for**:
 - `SERVICEORDER_TYPE` - Type of service order
 - `SALES_AGENT` - Sales agent for commissions
 - `SERVICELINE_NUMBER` - Service line number (join key)
+- `CREATED_DATETIME` - Service order creation date/time
+- `MODIFIED_DATETIME` - Service order last modification date/time
 
 **Filtering**: Excludes `SERVICELINE_NUMBER = '0'` or `'0000000000'`
 
@@ -168,6 +177,8 @@ These fields will be **NULL for**:
 - `REPORTED_NAME` - Name of person who reported the ticket
 - `RESOLUTION_NAME` - Name of person who resolved the ticket
 - `SERVICELINE_NUMBER` - Service line number (join key)
+- `CREATED_DATETIME` - Trouble ticket creation date/time
+- `MODIFIED_DATETIME` - Trouble ticket last modification date/time
 
 **Filtering**: Excludes `SERVICELINE_NUMBER = '0'` or `'0000000000'`
 
@@ -186,13 +197,14 @@ These fields will be **NULL for**:
 
 ### SERVICELINES (alias: `sl`)
 **Full Name**: `CAMVIO.PUBLIC.SERVICELINES`  
-**Purpose**: Service line information, including SERVICE_MODEL (for trouble tickets, fallback for service orders)
+**Purpose**: Service line information, including SERVICE_MODEL (for trouble tickets, fallback for service orders) and SERVICELINE_STARTDATE (creation date)
 
 **Join**: LEFT JOIN on `bd.SERVICELINE_NUMBER = sl.SERVICELINE_NUMBER`
 
 **Key Fields**:
 - `SERVICELINE_NUMBER` - Join key
 - `SERVICE_MODEL` - Service model type (used for trouble tickets)
+- `SERVICELINE_STARTDATE` - Service line creation date (available for both service orders and trouble tickets)
 
 ### SERVICEORDER_ADDRESSES (alias: `soa`)
 **Full Name**: `CAMVIO.PUBLIC.SERVICEORDER_ADDRESSES`  
@@ -309,6 +321,24 @@ Analyze appointments by date:
   - `RECORD_TYPE`
 - **Metrics**: `COUNT(DISTINCT APPOINTMENT_ID)`
 - **Use Case**: Track appointment trends over time
+
+### Example Query 8: Records by Creation Date
+Analyze records by creation date:
+- **Dimensions**: 
+  - `YEAR(CREATED_DATETIME)`, `MONTH(CREATED_DATETIME)`
+  - `RECORD_TYPE`
+- **Metrics**: `COUNT(DISTINCT SERVICEORDER_ID)`, `COUNT(DISTINCT TROUBLE_TICKET_ID)`
+- **Use Case**: Track service order and trouble ticket creation trends over time
+
+### Example Query 9: Service Line vs Record Creation Date Comparison
+Compare serviceline creation date with record creation date (useful for trouble tickets):
+- **Filter**: `RECORD_TYPE = 'Trouble Ticket'` (or `RECORD_TYPE = 'Service Order'`)
+- **Dimensions**: 
+  - `YEAR(SERVICELINE_CREATED_DATETIME)`, `YEAR(CREATED_DATETIME)`
+  - `RECORD_TYPE`
+- **Metrics**: `COUNT(DISTINCT TROUBLE_TICKET_ID)` or `COUNT(DISTINCT SERVICEORDER_ID)`
+- **Custom Column**: Calculate days between `SERVICELINE_CREATED_DATETIME` and `CREATED_DATETIME`
+- **Use Case**: Understand time between serviceline creation and trouble ticket/service order creation
 
 ## Notes
 

@@ -47,12 +47,24 @@ Semantic types in Metabase help the system understand what kind of data each col
 | `RESOLUTION_NAME` | `bd.RESOLUTION_NAME` | **Entity Name** | Name of person who resolved the trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
 | `TROUBLE_TICKET_NOTES` | `bd.TROUBLE_TICKET_NOTES` | **Description** | Concatenated notes per trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket", notes separated by ' \| ' |
 
+### Trouble Ticket Task Fields (populated based on STATUS)
+
+| Column Name | Database Column | Semantic Type | Description | Notes |
+|------------|-----------------|---------------|-------------|-------|
+| `TOTAL_DURATION_DAYS` | `td.TOTAL_DURATION_SECONDS / 86400.0` | **Duration** | Total duration in days (converted from seconds) | Available for all trouble tickets, calculated from sum of TROUBLE_TICKET_TASKS.DURATION_UNTIL_ENDED_SEC / 86400 |
+| `LATEST_OPEN_TASK_NAME` | `lot.TASK_NAME` | **Category** | Name of the latest open task | Only populated for non-CLOSED trouble tickets, from the task with latest TASK_STARTED where TASK_ENDED IS NULL |
+| `LATEST_OPEN_TASK_ASSIGNEE` | `lot.ASSIGNEE` | **Entity Name** | Assignee of the latest open task | Only populated for non-CLOSED trouble tickets, from the task with latest TASK_STARTED where TASK_ENDED IS NULL |
+| `LATEST_OPEN_TASK_STARTED` | `lot.TASK_STARTED` | **Creation Timestamp** | Start date/time of the latest open task | Only populated for non-CLOSED trouble tickets, from the task with latest TASK_STARTED where TASK_ENDED IS NULL |
+
 ### Common Supporting Fields
 
 | Column Name | Database Column | Semantic Type | Description | Notes |
 |------------|-----------------|---------------|-------------|-------|
 | `SERVICE_MODEL` | `COALESCE(soa.SERVICE_MODEL, sl.SERVICE_MODEL)` | **Category** | Service model | SERVICEORDER_ADDRESSES for service orders, SERVICELINES for trouble tickets |
 | `ADDRESS_CITY` | `COALESCE(sla.SERVICELINE_ADDRESS_CITY, soa.SERVICEORDER_ADDRESS_CITY)` | **City** | Address city | SERVICELINE_ADDRESS_CITY for both types (serviceline level), SERVICEORDER_ADDRESS_CITY as fallback for service orders |
+| `CREATED_DATETIME` | `bd.CREATED_DATETIME` | **Creation Timestamp** | Record creation date/time | From SERVICEORDERS for service orders, TROUBLE_TICKETS for trouble tickets |
+| `MODIFIED_DATETIME` | `bd.MODIFIED_DATETIME` | **Modification Timestamp** | Record last modification date/time | From SERVICEORDERS for service orders, TROUBLE_TICKETS for trouble tickets |
+| `SERVICELINE_CREATED_DATETIME` | `sl.SERVICELINE_STARTDATE` | **Creation Timestamp** | Service line creation date/time | From SERVICELINES.SERVICELINE_STARTDATE (available for both service orders and trouble tickets via SERVICELINE_NUMBER) |
 | `ACCOUNT_TYPE` | `ca.ACCOUNT_TYPE` | **Category** | Account type classification | From CUSTOMER_ACCOUNTS |
 
 ### Appointment Fields (populated when appointment exists)
@@ -76,8 +88,10 @@ Semantic types in Metabase help the system understand what kind of data each col
 - **Category**: Categorical data (status, type, classification)
 - **Description**: Text descriptions
 - **Creation Timestamp**: Date/time fields
+- **Modification Timestamp**: Date/time fields for last modification
 - **Currency**: Monetary values (prices, amounts)
 - **Quantity**: Numeric quantities
+- **Duration**: Time durations (seconds, minutes, hours)
 - **Boolean**: True/false values
 - **City**: City names (for geographic filtering)
 
@@ -94,8 +108,12 @@ Semantic types in Metabase help the system understand what kind of data each col
 **Trouble Ticket Fields** (NULL when RECORD_TYPE = "Service Order"):
 - `TROUBLE_TICKET_ID`, `REPORTED_NAME`, `RESOLUTION_NAME`, `TROUBLE_TICKET_NOTES`
 
+**Trouble Ticket Task Fields** (conditionally populated based on STATUS):
+- `TOTAL_DURATION_DAYS`: Available for all trouble tickets (NULL for service orders)
+- `LATEST_OPEN_TASK_NAME`, `LATEST_OPEN_TASK_ASSIGNEE`, `LATEST_OPEN_TASK_STARTED`: Only populated for non-CLOSED trouble tickets (NULL for CLOSED tickets and all service orders)
+
 **Common Fields** (available for both):
-- `ACCOUNT_ID`, `SERVICELINE_NUMBER`, `STATUS`, `SERVICE_MODEL`, `ADDRESS_CITY`, `ACCOUNT_TYPE`
+- `ACCOUNT_ID`, `SERVICELINE_NUMBER`, `STATUS`, `SERVICE_MODEL`, `ADDRESS_CITY`, `CREATED_DATETIME`, `MODIFIED_DATETIME`, `SERVICELINE_CREATED_DATETIME`, `ACCOUNT_TYPE`
 
 **SERVICE_MODEL**:
 - Service Orders: From SERVICEORDER_ADDRESSES.SERVICE_MODEL
@@ -117,8 +135,10 @@ Semantic types in Metabase help the system understand what kind of data each col
 - **Service Model Analysis**: Use `SERVICE_MODEL` (Category) - available for both types
 - **Sales Agent Analysis**: Use `SALES_AGENT` (Entity Name) - ⭐ required for commission calculations
 - **Feature Pricing Analysis**: Use `TOTAL_FEATURE_PRICE` (Currency) + `SERVICE_MODEL` (Category) - filter to `RECORD_TYPE = 'Service Order'` and `TOTAL_FEATURE_PRICE IS NOT NULL`
-- **Date Analysis**: Use `APPOINTMENT_DATE` (Creation Timestamp) for time-based analysis (filter to `HAS_APPOINTMENT = true`)
+- **Date Analysis**: Use `CREATED_DATETIME` (Creation Timestamp) or `MODIFIED_DATETIME` (Modification Timestamp) for time-based analysis, or `APPOINTMENT_DATE` (filter to `HAS_APPOINTMENT = true`)
 - **Account Analysis**: Use `ACCOUNT_TYPE` (Category) for account-based grouping
+- **Trouble Ticket Duration Analysis**: Use `TOTAL_DURATION_DAYS` (Duration) - filter to `RECORD_TYPE = 'Trouble Ticket'` AND `TOTAL_DURATION_DAYS IS NOT NULL` (available for all trouble tickets regardless of STATUS)
+- **Trouble Ticket Open Tasks**: Use `LATEST_OPEN_TASK_NAME` (Category), `LATEST_OPEN_TASK_ASSIGNEE` (Entity Name), `LATEST_OPEN_TASK_STARTED` (Creation Timestamp) - filter to `RECORD_TYPE = 'Trouble Ticket'` AND `STATUS != 'CLOSED'`
 
 ### Field Prefixes
 
@@ -205,3 +225,18 @@ Fields are NOT prefixed in this model (unlike the previous appointments-first ve
   - `COUNT(DISTINCT CASE WHEN HAS_APPOINTMENT THEN SERVICEORDER_ID END)` - Service orders with appointments
   - `COUNT(DISTINCT CASE WHEN HAS_APPOINTMENT THEN TROUBLE_TICKET_ID END)` - Trouble tickets with appointments
 - **Use Case**: Compare service orders and trouble tickets, with appointment coverage
+
+### Pattern 9: Trouble Tickets Duration Analysis
+- **Filter**: `RECORD_TYPE = 'Trouble Ticket'` AND `TOTAL_DURATION_DAYS IS NOT NULL`
+- **Dimensions**: `SERVICE_MODEL`, `ACCOUNT_TYPE`, `STATUS`
+- **Metrics**: 
+  - `AVG(TOTAL_DURATION_DAYS)` - Average duration (days)
+  - `SUM(TOTAL_DURATION_DAYS)` - Total duration (days)
+  - `COUNT(DISTINCT TROUBLE_TICKET_ID)` - Number of tickets
+- **Use Case**: Analyze duration for all trouble tickets (can filter by STATUS to analyze CLOSED vs non-CLOSED separately)
+
+### Pattern 10: Non-CLOSED Trouble Tickets - Open Tasks
+- **Filter**: `RECORD_TYPE = 'Trouble Ticket'` AND `STATUS != 'CLOSED'` AND `LATEST_OPEN_TASK_NAME IS NOT NULL`
+- **Dimensions**: `LATEST_OPEN_TASK_NAME`, `LATEST_OPEN_TASK_ASSIGNEE`, `STATUS`
+- **Metrics**: `COUNT(DISTINCT TROUBLE_TICKET_ID)`
+- **Use Case**: Track open tasks and assignments for active trouble tickets

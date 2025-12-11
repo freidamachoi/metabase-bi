@@ -31,6 +31,8 @@ WITH base_data AS (
         so.STATUS,
         so.SERVICEORDER_TYPE,
         INITCAP(REPLACE(so.SALES_AGENT, '.', ' ')) AS SALES_AGENT,  -- Required: Sales agent for commissions (title case, split on '.')
+        so.CREATED_DATETIME,
+        so.MODIFIED_DATETIME,
         
         -- Trouble Ticket Specific Fields (NULL for service orders)
         CAST(NULL AS NUMBER) AS TROUBLE_TICKET_ID,
@@ -64,6 +66,8 @@ WITH base_data AS (
         tt.STATUS,
         CAST(NULL AS TEXT) AS SERVICEORDER_TYPE,
         CAST(NULL AS TEXT) AS SALES_AGENT,
+        tt.CREATED_DATETIME,
+        tt.MODIFIED_DATETIME,
         
         -- Trouble Ticket Specific Fields
         tt.TROUBLE_TICKET_ID,
@@ -107,6 +111,33 @@ feature_aggregates AS (
     WHERE CAST(sf.SERVICELINE_NUMBER AS VARCHAR) NOT IN ('0', '0000000000')
         AND sf.SERVICELINE_NUMBER IS NOT NULL
     GROUP BY sf.SERVICELINE_NUMBER
+),
+
+-- Total duration for trouble tickets (sum of DURATION_UNTIL_ENDED_SEC from all tasks)
+-- Available for all trouble tickets regardless of STATUS
+ticket_duration AS (
+    SELECT
+        ttt.TROUBLE_TICKET_ID,
+        SUM(ttt.DURATION_UNTIL_ENDED_SEC) AS TOTAL_DURATION_SECONDS
+    FROM CAMVIO.PUBLIC.TROUBLE_TICKET_TASKS ttt
+    WHERE ttt.DURATION_UNTIL_ENDED_SEC IS NOT NULL
+    GROUP BY ttt.TROUBLE_TICKET_ID
+),
+
+-- Latest open task for trouble tickets (TASK_ENDED IS NULL, ordered by TASK_STARTED DESC)
+-- Note: Will be filtered to non-CLOSED tickets in the JOIN condition
+latest_open_task AS (
+    SELECT
+        ttt.TROUBLE_TICKET_ID,
+        ttt.TASK_NAME,
+        INITCAP(REPLACE(ttt.ASSIGNEE, '.', ' ')) AS ASSIGNEE,
+        ttt.TASK_STARTED,
+        ROW_NUMBER() OVER (
+            PARTITION BY ttt.TROUBLE_TICKET_ID
+            ORDER BY ttt.TASK_STARTED DESC NULLS LAST
+        ) AS rn
+    FROM CAMVIO.PUBLIC.TROUBLE_TICKET_TASKS ttt
+    WHERE ttt.TASK_ENDED IS NULL
 )
 
 SELECT 
@@ -136,10 +167,41 @@ SELECT
     bd.RESOLUTION_NAME,
     bd.TROUBLE_TICKET_NOTES,
     
+    -- Trouble Ticket Task Fields (populated based on STATUS)
+    -- Total duration in days (converted from seconds) - available for all trouble tickets
+    CASE 
+        WHEN bd.RECORD_TYPE = 'Trouble Ticket' 
+        THEN td.TOTAL_DURATION_SECONDS / 86400.0 
+        ELSE NULL 
+    END AS TOTAL_DURATION_DAYS,
+    -- For non-CLOSED tickets: Latest open task information (only one task per ticket)
+    CASE 
+        WHEN bd.RECORD_TYPE = 'Trouble Ticket' AND UPPER(TRIM(bd.STATUS)) != 'CLOSED' 
+        THEN lot.TASK_NAME 
+        ELSE NULL 
+    END AS LATEST_OPEN_TASK_NAME,
+    CASE 
+        WHEN bd.RECORD_TYPE = 'Trouble Ticket' AND UPPER(TRIM(bd.STATUS)) != 'CLOSED' 
+        THEN lot.ASSIGNEE 
+        ELSE NULL 
+    END AS LATEST_OPEN_TASK_ASSIGNEE,
+    CASE 
+        WHEN bd.RECORD_TYPE = 'Trouble Ticket' AND UPPER(TRIM(bd.STATUS)) != 'CLOSED' 
+        THEN lot.TASK_STARTED 
+        ELSE NULL 
+    END AS LATEST_OPEN_TASK_STARTED,
+    
     -- Service Model: SERVICEORDER_ADDRESSES for service orders, SERVICELINES for trouble tickets
     COALESCE(soa.SERVICE_MODEL, sl.SERVICE_MODEL) AS SERVICE_MODEL,
     -- Address City: SERVICELINE_ADDRESSES for both (serviceline level), SERVICEORDER_ADDRESSES as fallback for service orders
     COALESCE(sla.SERVICELINE_ADDRESS_CITY, soa.SERVICEORDER_ADDRESS_CITY) AS ADDRESS_CITY,
+    
+    -- Timestamp Fields (available for both service orders and trouble tickets)
+    bd.CREATED_DATETIME,
+    bd.MODIFIED_DATETIME,
+    
+    -- Service Line Creation Date (available for both service orders and trouble tickets via SERVICELINE_NUMBER)
+    sl.SERVICELINE_STARTDATE AS SERVICELINE_CREATED_DATETIME,
     
     -- Account Information
     ca.ACCOUNT_TYPE,
@@ -182,9 +244,21 @@ LEFT JOIN CAMVIO.PUBLIC.SERVICELINE_ADDRESSES sla
 LEFT JOIN CAMVIO.PUBLIC.CUSTOMER_ACCOUNTS ca
     ON bd.ACCOUNT_ID = ca.ACCOUNT_ID
 
+-- Join ticket duration (for all trouble tickets)
+LEFT JOIN ticket_duration td
+    ON bd.RECORD_TYPE = 'Trouble Ticket'
+    AND bd.TROUBLE_TICKET_ID = td.TROUBLE_TICKET_ID
+
+-- Join latest open task (only for non-CLOSED trouble tickets)
+LEFT JOIN latest_open_task lot
+    ON bd.RECORD_TYPE = 'Trouble Ticket'
+    AND bd.TROUBLE_TICKET_ID = lot.TROUBLE_TICKET_ID
+    AND UPPER(TRIM(bd.STATUS)) != 'CLOSED'
+    AND lot.rn = 1
+
 -- OUTER JOIN to Appointments (when they exist)
 -- Join using ORDER_ID for service orders, TROUBLE_TICKET_ID for trouble tickets
--- Fallback to SERVICELINE_NUMBER + ACCOUNT_ID if ID conversion failed
+-- Fallback to SERVICELINE_NUMBER + ACCOUNT_ID only when primary ID is missing AND appointment doesn't have the other type's ID
 LEFT JOIN (
     -- Subquery to safely read ORDER_ID by casting to VARCHAR first to avoid read error
     SELECT 
@@ -201,22 +275,33 @@ LEFT JOIN (
         AND SERVICELINE_NUMBER IS NOT NULL
 ) a
     ON (
-        -- Service Order joins: ORDER_ID (primary) or SERVICELINE_NUMBER + ACCOUNT_ID (fallback)
+        -- Service Order joins: ORDER_ID (primary) or SERVICELINE_NUMBER + ACCOUNT_ID (fallback only if appointment has no TROUBLE_TICKET_ID)
         (bd.RECORD_TYPE = 'Service Order' 
          AND (
              (bd.APPOINTMENT_JOIN_ORDER_ID IS NOT NULL AND a.ORDER_ID = bd.APPOINTMENT_JOIN_ORDER_ID)
              OR
-             (bd.SERVICELINE_NUMBER = a.SERVICELINE_NUMBER AND bd.ACCOUNT_ID = a.ACCOUNT_ID)
+             (bd.APPOINTMENT_JOIN_ORDER_ID IS NULL 
+              AND a.TROUBLE_TICKET_ID IS NULL 
+              AND bd.SERVICELINE_NUMBER = a.SERVICELINE_NUMBER 
+              AND bd.ACCOUNT_ID = a.ACCOUNT_ID)
          ))
         OR
-        -- Trouble Ticket joins: TROUBLE_TICKET_ID (primary) or SERVICELINE_NUMBER + ACCOUNT_ID (fallback)
+        -- Trouble Ticket joins: TROUBLE_TICKET_ID (primary) or SERVICELINE_NUMBER + ACCOUNT_ID (fallback only if appointment has no ORDER_ID)
         (bd.RECORD_TYPE = 'Trouble Ticket'
          AND (
              (bd.APPOINTMENT_JOIN_TROUBLE_TICKET_ID IS NOT NULL AND a.TROUBLE_TICKET_ID = bd.APPOINTMENT_JOIN_TROUBLE_TICKET_ID)
              OR
-             (bd.SERVICELINE_NUMBER = a.SERVICELINE_NUMBER AND bd.ACCOUNT_ID = a.ACCOUNT_ID)
+             (bd.APPOINTMENT_JOIN_TROUBLE_TICKET_ID IS NULL 
+              AND a.ORDER_ID IS NULL 
+              AND bd.SERVICELINE_NUMBER = a.SERVICELINE_NUMBER 
+              AND bd.ACCOUNT_ID = a.ACCOUNT_ID)
          ))
     )
+
+WHERE 
+    -- Exclude records where ADDRESS_CITY contains 'GOAT RODEO'
+    (COALESCE(sla.SERVICELINE_ADDRESS_CITY, soa.SERVICEORDER_ADDRESS_CITY) IS NULL
+     OR COALESCE(sla.SERVICELINE_ADDRESS_CITY, soa.SERVICEORDER_ADDRESS_CITY) NOT LIKE '%GOAT RODEO%')
 
 ORDER BY 
     CASE WHEN a.APPOINTMENT_DATE IS NOT NULL THEN 0 ELSE 1 END,  -- Appointments first
@@ -247,6 +332,8 @@ ORDER BY
 -- Trouble Ticket Fields:
 -- - TROUBLE_TICKET_ID, STATUS, REPORTED_NAME, RESOLUTION_NAME
 -- - TROUBLE_TICKET_NOTES: Concatenated notes per trouble ticket (separated by ' | ')
+-- - TOTAL_DURATION_DAYS: Total duration in days (converted from seconds, available for all trouble tickets)
+-- - LATEST_OPEN_TASK_NAME, LATEST_OPEN_TASK_ASSIGNEE, LATEST_OPEN_TASK_STARTED: Latest open task info (only for non-CLOSED tickets)
 --
 -- Appointment Fields (NULL when no appointment):
 -- - APPOINTMENT_ID, APPOINTMENT_TYPE, APPOINTMENT_TYPE_DESCRIPTION, APPOINTMENT_DATE
@@ -254,6 +341,8 @@ ORDER BY
 -- Common Fields (available for both):
 -- - SERVICE_MODEL (from SERVICEORDER_ADDRESSES for service orders, SERVICELINES for trouble tickets)
 -- - ADDRESS_CITY (from SERVICELINE_ADDRESSES for both types, with SERVICEORDER_ADDRESSES as fallback for service orders)
+-- - CREATED_DATETIME, MODIFIED_DATETIME (from SERVICEORDERS for service orders, TROUBLE_TICKETS for trouble tickets)
+-- - SERVICELINE_CREATED_DATETIME (from SERVICELINES.SERVICELINE_STARTDATE for both types via SERVICELINE_NUMBER)
 -- - ACCOUNT_TYPE (from CUSTOMER_ACCOUNTS)
 --
 -- Usage Notes:
