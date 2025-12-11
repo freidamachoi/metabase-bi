@@ -107,7 +107,7 @@ These fields will be **NULL for**:
 | `REPORTED_NAME` | TEXT | Entity Name | Name of person who reported the trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
 | `RESOLUTION_NAME` | TEXT | Entity Name | Name of person who resolved the trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
 | `TROUBLE_TICKET_NOTES` | TEXT | Description | Concatenated notes per trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
-| `TOTAL_DURATION_DAYS` | NUMBER | Duration | Total duration in days (converted from seconds) | Available for all trouble tickets, calculated from sum of task durations / 86400 |
+| `TOTAL_DURATION_DAYS` | NUMBER | Duration | Total duration in days | Available for all trouble tickets. For non-CLOSED: days from CREATED_DATETIME to TODAY. For CLOSED: days from CREATED_DATETIME to latest TASK_ENDED |
 | `LATEST_OPEN_TASK_NAME` | TEXT | Category | Name of the latest open task | Only populated for non-CLOSED trouble tickets |
 | `LATEST_OPEN_TASK_ASSIGNEE` | TEXT | Entity Name | Assignee of the latest open task | Only populated for non-CLOSED trouble tickets |
 | `LATEST_OPEN_TASK_STARTED` | TIMESTAMP | Creation Timestamp | Start date/time of the latest open task | Only populated for non-CLOSED trouble tickets |

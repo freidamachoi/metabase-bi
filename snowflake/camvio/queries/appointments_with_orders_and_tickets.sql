@@ -113,15 +113,24 @@ feature_aggregates AS (
     GROUP BY sf.SERVICELINE_NUMBER
 ),
 
--- Total duration for trouble tickets (sum of DURATION_UNTIL_ENDED_SEC from all tasks)
--- Available for all trouble tickets regardless of STATUS
+-- Total duration for trouble tickets (calculated based on STATUS)
+-- For non-CLOSED: days from CREATED_DATETIME to TODAY
+-- For CLOSED: days from CREATED_DATETIME to latest TASK_ENDED
 ticket_duration AS (
     SELECT
-        ttt.TROUBLE_TICKET_ID,
-        SUM(ttt.DURATION_UNTIL_ENDED_SEC) AS TOTAL_DURATION_SECONDS
-    FROM CAMVIO.PUBLIC.TROUBLE_TICKET_TASKS ttt
-    WHERE ttt.DURATION_UNTIL_ENDED_SEC IS NOT NULL
-    GROUP BY ttt.TROUBLE_TICKET_ID
+        tt.TROUBLE_TICKET_ID,
+        CASE
+            WHEN UPPER(TRIM(tt.STATUS)) = 'CLOSED' THEN
+                -- CLOSED: Calculate days from CREATED_DATETIME to latest TASK_ENDED
+                DATEDIFF(DAY, tt.CREATED_DATETIME, COALESCE(MAX(ttt.TASK_ENDED), tt.CREATED_DATETIME))
+            ELSE
+                -- Non-CLOSED: Calculate days from CREATED_DATETIME to TODAY
+                DATEDIFF(DAY, tt.CREATED_DATETIME, CURRENT_DATE())
+        END AS TOTAL_DURATION_DAYS
+    FROM CAMVIO.PUBLIC.TROUBLE_TICKETS tt
+    LEFT JOIN CAMVIO.PUBLIC.TROUBLE_TICKET_TASKS ttt
+        ON tt.TROUBLE_TICKET_ID = ttt.TROUBLE_TICKET_ID
+    GROUP BY tt.TROUBLE_TICKET_ID, tt.STATUS, tt.CREATED_DATETIME
 ),
 
 -- Latest open task for trouble tickets (TASK_ENDED IS NULL, ordered by TASK_STARTED DESC)
@@ -168,10 +177,12 @@ SELECT
     bd.TROUBLE_TICKET_NOTES,
     
     -- Trouble Ticket Task Fields (populated based on STATUS)
-    -- Total duration in days (converted from seconds) - available for all trouble tickets
+    -- Total duration in days - available for all trouble tickets
+    -- For non-CLOSED: days from CREATED_DATETIME to TODAY
+    -- For CLOSED: days from CREATED_DATETIME to latest TASK_ENDED
     CASE 
         WHEN bd.RECORD_TYPE = 'Trouble Ticket' 
-        THEN td.TOTAL_DURATION_SECONDS / 86400.0 
+        THEN td.TOTAL_DURATION_DAYS 
         ELSE NULL 
     END AS TOTAL_DURATION_DAYS,
     -- For non-CLOSED tickets: Latest open task information (only one task per ticket)

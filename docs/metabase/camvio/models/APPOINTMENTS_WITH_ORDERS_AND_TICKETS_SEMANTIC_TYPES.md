@@ -51,7 +51,7 @@ Semantic types in Metabase help the system understand what kind of data each col
 
 | Column Name | Database Column | Semantic Type | Description | Notes |
 |------------|-----------------|---------------|-------------|-------|
-| `TOTAL_DURATION_DAYS` | `td.TOTAL_DURATION_SECONDS / 86400.0` | **Duration** | Total duration in days (converted from seconds) | Available for all trouble tickets, calculated from sum of TROUBLE_TICKET_TASKS.DURATION_UNTIL_ENDED_SEC / 86400 |
+| `TOTAL_DURATION_DAYS` | `td.TOTAL_DURATION_DAYS` | **Duration** | Total duration in days | Available for all trouble tickets. For non-CLOSED: days from CREATED_DATETIME to TODAY. For CLOSED: days from CREATED_DATETIME to latest TASK_ENDED |
 | `LATEST_OPEN_TASK_NAME` | `lot.TASK_NAME` | **Category** | Name of the latest open task | Only populated for non-CLOSED trouble tickets, from the task with latest TASK_STARTED where TASK_ENDED IS NULL |
 | `LATEST_OPEN_TASK_ASSIGNEE` | `lot.ASSIGNEE` | **Entity Name** | Assignee of the latest open task | Only populated for non-CLOSED trouble tickets, from the task with latest TASK_STARTED where TASK_ENDED IS NULL |
 | `LATEST_OPEN_TASK_STARTED` | `lot.TASK_STARTED` | **Creation Timestamp** | Start date/time of the latest open task | Only populated for non-CLOSED trouble tickets, from the task with latest TASK_STARTED where TASK_ENDED IS NULL |
