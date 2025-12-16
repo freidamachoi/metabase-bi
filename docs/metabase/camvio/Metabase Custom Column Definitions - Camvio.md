@@ -477,3 +477,77 @@ trim(
   )
 )
 ```
+
+## Trouble Ticket Assignee (Formatted)
+
+### Assignee Formatted
+
+```java
+case(
+  isNull([Trouble Ticket Assignee]),
+  "Unassigned",
+  case(
+    trim([Trouble Ticket Assignee]) = "",
+    "Unassigned",
+  case(
+    contains([Trouble Ticket Assignee], "@"),
+    concat(
+      upper(
+        substring(
+          splitPart([Trouble Ticket Assignee], "@", 1),
+          1,
+          1
+        )
+      ),
+      concat(
+        " ",
+        concat(
+          upper(
+            substring(
+              splitPart([Trouble Ticket Assignee], "@", 1),
+              2,
+              1
+            )
+          ),
+          lower(
+            substring(
+              splitPart([Trouble Ticket Assignee], "@", 1),
+              3,
+              length(
+                splitPart([Trouble Ticket Assignee], "@", 1)
+              ) - 2
+            )
+          )
+        )
+      )
+    ),
+    case(
+      contains(lower([Trouble Ticket Assignee]), "distribution"),
+      case(
+        contains(lower([Trouble Ticket Assignee]), "customercare"),
+        "Customer Care",
+        case(
+          contains(lower([Trouble Ticket Assignee]), "osp"),
+          "OSP",
+          [Trouble Ticket Assignee]
+        )
+      ),
+      [Trouble Ticket Assignee]
+    )
+  )
+  )
+)
+```
+
+### Within 30 Days of Serviceline Start
+
+```java
+case(
+  [Record Type] = "Trouble Ticket",
+  COALESCE(
+    datetimeDiff([SERVICELINE_CREATED_DATETIME], [CREATED_DATETIME], "day"),
+    999999
+  ) <= 30,
+  false
+)
+```

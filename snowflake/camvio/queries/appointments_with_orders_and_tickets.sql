@@ -16,7 +16,30 @@
 -- complete coverage of all records, not just those with appointments.
 -- ============================================================================
 
-WITH base_data AS (
+WITH serviceline_creating_order AS (
+    -- Find the service order that created each serviceline (for trouble tickets to get ORDER_ID)
+    SELECT
+        CAST(sl.SERVICELINE_NUMBER AS VARCHAR) AS SERVICELINE_NUMBER,
+        so.ORDER_ID,
+        so.SERVICEORDER_ID,
+        ROW_NUMBER() OVER (
+            PARTITION BY CAST(sl.SERVICELINE_NUMBER AS VARCHAR)
+            ORDER BY 
+                -- Prefer orders where CREATED_SERVICELINE_ID matches (if we can determine the relationship)
+                CASE WHEN so.CREATED_SERVICELINE_ID IS NOT NULL THEN 0 ELSE 1 END,
+                -- Then by date proximity to serviceline start
+                ABS(DATEDIFF(DAY, so.CREATED_DATETIME, sl.SERVICELINE_STARTDATE)),
+                so.CREATED_DATETIME DESC
+        ) AS rn
+    FROM CAMVIO.PUBLIC.SERVICELINES sl
+    INNER JOIN CAMVIO.PUBLIC.SERVICEORDERS so
+        ON CAST(sl.SERVICELINE_NUMBER AS VARCHAR) = CAST(so.SERVICELINE_NUMBER AS VARCHAR)
+    WHERE CAST(sl.SERVICELINE_NUMBER AS VARCHAR) NOT IN ('0', '0000000000')
+        AND sl.SERVICELINE_NUMBER IS NOT NULL
+        AND so.SERVICELINE_NUMBER IS NOT NULL
+),
+
+base_data AS (
     -- Service Orders
     SELECT 
         'Service Order' AS RECORD_TYPE,
@@ -31,8 +54,8 @@ WITH base_data AS (
         so.STATUS,
         so.SERVICEORDER_TYPE,
         INITCAP(REPLACE(so.SALES_AGENT, '.', ' ')) AS SALES_AGENT,  -- Required: Sales agent for commissions (title case, split on '.')
-        so.CREATED_DATETIME,
-        so.MODIFIED_DATETIME,
+        CAST(NULL AS TIMESTAMP_NTZ) AS CREATED_DATETIME,  -- Only populated for trouble tickets
+        CAST(NULL AS TIMESTAMP_NTZ) AS MODIFIED_DATETIME,  -- Not used
         
         -- Trouble Ticket Specific Fields (NULL for service orders)
         CAST(NULL AS NUMBER) AS TROUBLE_TICKET_ID,
@@ -60,14 +83,14 @@ WITH base_data AS (
         tt.ACCOUNT_ID,
         CAST(tt.SERVICELINE_NUMBER AS VARCHAR) AS SERVICELINE_NUMBER,
         
-        -- Service Order Specific Fields (NULL for trouble tickets)
-        CAST(NULL AS NUMBER) AS SERVICEORDER_ID,
-        CAST(NULL AS NUMBER) AS ORDER_ID,
+        -- Service Order Specific Fields (get ORDER_ID from creating service order)
+        sco.SERVICEORDER_ID,
+        sco.ORDER_ID,  -- Get ORDER_ID from service order that created the serviceline
         tt.STATUS,
         CAST(NULL AS TEXT) AS SERVICEORDER_TYPE,
         CAST(NULL AS TEXT) AS SALES_AGENT,
-        tt.CREATED_DATETIME,
-        tt.MODIFIED_DATETIME,
+        tt.CREATED_DATETIME,  -- Trouble Ticket CREATED_DATETIME (used with SERVICELINE_STARTDATE for 30-day calculation)
+        CAST(NULL AS TIMESTAMP_NTZ) AS MODIFIED_DATETIME,  -- Not used
         
         -- Trouble Ticket Specific Fields
         tt.TROUBLE_TICKET_ID,
@@ -75,8 +98,8 @@ WITH base_data AS (
         tt.RESOLUTION_NAME,
         ttn.CONCATENATED_NOTES AS TROUBLE_TICKET_NOTES,
         
-        -- Join Keys for Appointments
-        CAST(NULL AS NUMBER) AS APPOINTMENT_JOIN_ORDER_ID,
+        -- Join Keys for Appointments (use ORDER_ID if available)
+        sco.ORDER_ID AS APPOINTMENT_JOIN_ORDER_ID,
         tt.TROUBLE_TICKET_ID AS APPOINTMENT_JOIN_TROUBLE_TICKET_ID,
         tt.SERVICELINE_NUMBER AS APPOINTMENT_JOIN_SERVICELINE_NUMBER,
         tt.ACCOUNT_ID AS APPOINTMENT_JOIN_ACCOUNT_ID
@@ -95,6 +118,11 @@ WITH base_data AS (
     ) ttn
         ON tt.TROUBLE_TICKET_ID = ttn.TROUBLE_TICKET_ID
     
+    -- Get ORDER_ID from service order that created the serviceline
+    LEFT JOIN serviceline_creating_order sco
+        ON CAST(tt.SERVICELINE_NUMBER AS VARCHAR) = sco.SERVICELINE_NUMBER
+        AND sco.rn = 1  -- Only get one order per serviceline
+    
     WHERE CAST(tt.SERVICELINE_NUMBER AS VARCHAR) NOT IN ('0', '0000000000')
         AND tt.SERVICELINE_NUMBER IS NOT NULL
 ),
@@ -104,9 +132,9 @@ feature_aggregates AS (
     SELECT
         sf.SERVICELINE_NUMBER,
         COUNT(DISTINCT sf.FEATURE) AS FEATURE_COUNT,
-        SUM(sf.FEATURE_PRICE * sf.QTY) AS TOTAL_FEATURE_PRICE,
         SUM(sf.FEATURE_PRICE * sf.QTY) AS TOTAL_FEATURE_AMOUNT,
-        SUM(sf.QTY) AS TOTAL_FEATURE_QUANTITY
+        SUM(sf.QTY) AS TOTAL_FEATURE_QUANTITY,
+        LISTAGG(DISTINCT sf.FEATURE, ', ') WITHIN GROUP (ORDER BY sf.FEATURE) AS FEATURES
     FROM CAMVIO.PUBLIC.SERVICELINE_FEATURES sf
     WHERE CAST(sf.SERVICELINE_NUMBER AS VARCHAR) NOT IN ('0', '0000000000')
         AND sf.SERVICELINE_NUMBER IS NOT NULL
@@ -165,10 +193,10 @@ SELECT
     bd.SALES_AGENT,
     
     -- Feature Aggregates (populated for service orders with features)
-    fa.TOTAL_FEATURE_PRICE,
     fa.TOTAL_FEATURE_AMOUNT,
     fa.FEATURE_COUNT,
     fa.TOTAL_FEATURE_QUANTITY,
+    fa.FEATURES,
     
     -- Trouble Ticket Fields
     bd.TROUBLE_TICKET_ID,
@@ -207,9 +235,12 @@ SELECT
     -- Address City: SERVICELINE_ADDRESSES for both (serviceline level), SERVICEORDER_ADDRESSES as fallback for service orders
     COALESCE(sla.SERVICELINE_ADDRESS_CITY, soa.SERVICEORDER_ADDRESS_CITY) AS ADDRESS_CITY,
     
-    -- Timestamp Fields (available for both service orders and trouble tickets)
-    bd.CREATED_DATETIME,
-    bd.MODIFIED_DATETIME,
+    -- Timestamp Fields (only for trouble tickets)
+    CASE 
+        WHEN bd.RECORD_TYPE = 'Trouble Ticket' 
+        THEN bd.CREATED_DATETIME 
+        ELSE NULL 
+    END AS CREATED_DATETIME,
     
     -- Service Line Creation Date (available for both service orders and trouble tickets via SERVICELINE_NUMBER)
     sl.SERVICELINE_STARTDATE AS SERVICELINE_CREATED_DATETIME,

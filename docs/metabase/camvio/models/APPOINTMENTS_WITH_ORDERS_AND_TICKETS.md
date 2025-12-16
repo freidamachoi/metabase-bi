@@ -26,6 +26,7 @@ This model enables analysis of:
   - Excludes `SERVICELINE_NUMBER = '0'` or `'0000000000'` (invalid service line numbers)
   - Excludes NULL `SERVICELINE_NUMBER`
 - **CTEs**:
+  - `serviceline_creating_order`: Finds the service order that created each serviceline (used to populate ORDER_ID for trouble tickets)
   - `base_data`: UNION ALL of service orders and trouble tickets
   - `feature_aggregates`: Aggregated feature pricing for service orders
 - **Joins**: 
@@ -45,7 +46,8 @@ This model enables analysis of:
   - TROUBLE_TICKET_ID, REPORTED_NAME, RESOLUTION_NAME, TROUBLE_TICKET_NOTES are NULL
 - **RECORD_TYPE = "Trouble Ticket"** → Trouble ticket record
   - Includes TROUBLE_TICKET_ID, STATUS, REPORTED_NAME, RESOLUTION_NAME, concatenated notes
-  - SERVICEORDER_ID, ORDER_ID, SALES_AGENT, feature aggregates are NULL
+  - SERVICEORDER_ID and ORDER_ID are populated from the service order that created the serviceline (when available)
+  - SALES_AGENT, feature aggregates are NULL
 
 ### Appointment Enrichment
 Appointments are **optional enrichment** - they are OUTER JOINed to the base data:
@@ -57,10 +59,10 @@ Appointments are **optional enrichment** - they are OUTER JOINed to the base dat
 The query uses a **dual join strategy** for appointments:
 1. **Primary join**: 
    - Service Orders: Uses ORDER_ID
-   - Trouble Tickets: Uses TROUBLE_TICKET_ID
+   - Trouble Tickets: Uses TROUBLE_TICKET_ID (or ORDER_ID if available from the creating service order)
 2. **Fallback join**: Uses SERVICELINE_NUMBER + ACCOUNT_ID when ID conversion failed
 
-This ensures maximum join success even when ORDER_ID contains invalid values.
+This ensures maximum join success even when ORDER_ID contains invalid values. Note that trouble tickets now have ORDER_ID populated from the service order that created the serviceline, which can also be used for appointment joins.
 
 ### Service Model
 `SERVICE_MODEL` comes from different sources based on record type:
@@ -70,10 +72,10 @@ This ensures maximum join success even when ORDER_ID contains invalid values.
 
 ### Feature Aggregates
 Feature pricing aggregates are **only populated for service orders that have features**:
-- `TOTAL_FEATURE_PRICE` - Sum of (feature price × quantity) for all features
-- `TOTAL_FEATURE_AMOUNT` - Sum of (feature price × quantity) for all features (same as TOTAL_FEATURE_PRICE)
+- `TOTAL_FEATURE_AMOUNT` - Sum of (feature price × quantity) for all features
 - `FEATURE_COUNT` - Number of distinct features
 - `TOTAL_FEATURE_QUANTITY` - Total quantity of all features
+- `FEATURES` - Concatenated list of feature names (comma-separated)
 
 These fields will be **NULL for**:
 - Trouble tickets
@@ -98,8 +100,8 @@ These fields will be **NULL for**:
 | `RECORD_TYPE` | TEXT | Category | Record type ("Service Order" or "Trouble Ticket") | Distinguishes the source |
 | `ACCOUNT_ID` | NUMBER | Entity Key | Account identifier | Common field (available for both types) |
 | `SERVICELINE_NUMBER` | TEXT | Entity Key | Service line number (VARCHAR) | Common field (available for both types) |
-| `SERVICEORDER_ID` | NUMBER | Entity Key | Service order identifier | Only populated when RECORD_TYPE = "Service Order" |
-| `ORDER_ID` | NUMBER | Entity Key | Order identifier | Only populated when RECORD_TYPE = "Service Order" |
+| `SERVICEORDER_ID` | NUMBER | Entity Key | Service order identifier | Populated for service orders. For trouble tickets, populated from the service order that created the serviceline |
+| `ORDER_ID` | NUMBER | Entity Key | Order identifier | Populated for service orders. For trouble tickets, populated from the service order that created the serviceline |
 | `STATUS` | TEXT | Category | Status | Service order status or trouble ticket status |
 | `SERVICEORDER_TYPE` | TEXT | Category | Service order type | Only populated when RECORD_TYPE = "Service Order" |
 | `SALES_AGENT` | TEXT | Entity Name | Sales agent for commissions | ⭐ Required for commission calculations, only populated when RECORD_TYPE = "Service Order" |
@@ -113,14 +115,13 @@ These fields will be **NULL for**:
 | `LATEST_OPEN_TASK_STARTED` | TIMESTAMP | Creation Timestamp | Start date/time of the latest open task | Only populated for non-CLOSED trouble tickets |
 | `SERVICE_MODEL` | TEXT | Category | Service model | SERVICEORDER_ADDRESSES for service orders, SERVICELINES for trouble tickets |
 | `ADDRESS_CITY` | TEXT | City | Address city | SERVICELINE_ADDRESS_CITY for both types (serviceline level), SERVICEORDER_ADDRESS_CITY as fallback for service orders |
-| `CREATED_DATETIME` | TIMESTAMP | Creation Timestamp | Record creation date/time | From SERVICEORDERS for service orders, TROUBLE_TICKETS for trouble tickets |
-| `MODIFIED_DATETIME` | TIMESTAMP | Modification Timestamp | Record last modification date/time | From SERVICEORDERS for service orders, TROUBLE_TICKETS for trouble tickets |
-| `SERVICELINE_CREATED_DATETIME` | TIMESTAMP | Creation Timestamp | Service line creation date/time | From SERVICELINES.SERVICELINE_STARTDATE (available for both service orders and trouble tickets via SERVICELINE_NUMBER) |
+| `CREATED_DATETIME` | TIMESTAMP | Creation Timestamp | Trouble ticket creation date/time | Only populated when RECORD_TYPE = "Trouble Ticket", NULL for service orders. Used with SERVICELINE_STARTDATE for 30-day calculation |
+| `SERVICELINE_CREATED_DATETIME` | TIMESTAMP | Creation Timestamp | Service line start date | Always populated from SERVICELINES.SERVICELINE_STARTDATE when serviceline exists, NULL if no serviceline match or no start date |
 | `ACCOUNT_TYPE` | TEXT | Category | Account type classification | From CUSTOMER_ACCOUNTS |
-| `TOTAL_FEATURE_PRICE` | NUMBER | Currency | Sum of (feature price × quantity) | Only populated for service orders with features |
 | `TOTAL_FEATURE_AMOUNT` | NUMBER | Currency | Sum of (feature price × quantity) | Only populated for service orders with features |
 | `FEATURE_COUNT` | NUMBER | Quantity | Number of distinct features | Only populated for service orders with features |
 | `TOTAL_FEATURE_QUANTITY` | NUMBER | Quantity | Total quantity of all features | Only populated for service orders with features |
+| `FEATURES` | TEXT | Description | Concatenated list of feature names (comma-separated) | Only populated for service orders with features |
 | `APPOINTMENT_ID` | NUMBER | Entity Key | Unique appointment identifier | NULL when no appointment exists |
 | `APPOINTMENT_TYPE` | TEXT | Category | Appointment type ("O" or "TT") | NULL when no appointment exists |
 | `APPOINTMENT_TYPE_DESCRIPTION` | TEXT | Description | Description of appointment type | NULL when no appointment exists |
@@ -130,9 +131,9 @@ These fields will be **NULL for**:
 | `HAS_APPOINTMENT` | BOOLEAN | Boolean | Whether an appointment exists for this record | Use to filter records with/without appointments |
 
 ### Entity Keys
-- `SERVICEORDER_ID` - Service order identifier (service orders only)
+- `SERVICEORDER_ID` - Service order identifier (service orders; also populated for trouble tickets from the creating service order)
 - `TROUBLE_TICKET_ID` - Trouble ticket identifier (trouble tickets only)
-- `ORDER_ID` - Order identifier (service orders only)
+- `ORDER_ID` - Order identifier (service orders; also populated for trouble tickets from the creating service order)
 - `ACCOUNT_ID` - Account identifier (common)
 - `SERVICELINE_NUMBER` - Service line number (common)
 - `APPOINTMENT_ID` - Appointment identifier (when appointment exists)
@@ -145,7 +146,6 @@ These fields will be **NULL for**:
 - `STATUS` - Service order or trouble ticket status
 
 ### Important Metrics
-- `TOTAL_FEATURE_PRICE` - Total feature pricing (service orders only)
 - `TOTAL_FEATURE_AMOUNT` - Total feature amount (price × qty) (service orders only)
 - `FEATURE_COUNT` - Number of features (service orders only)
 
@@ -162,8 +162,6 @@ These fields will be **NULL for**:
 - `SERVICEORDER_TYPE` - Type of service order
 - `SALES_AGENT` - Sales agent for commissions
 - `SERVICELINE_NUMBER` - Service line number (join key)
-- `CREATED_DATETIME` - Service order creation date/time
-- `MODIFIED_DATETIME` - Service order last modification date/time
 
 **Filtering**: Excludes `SERVICELINE_NUMBER = '0'` or `'0000000000'`
 
@@ -177,8 +175,7 @@ These fields will be **NULL for**:
 - `REPORTED_NAME` - Name of person who reported the ticket
 - `RESOLUTION_NAME` - Name of person who resolved the ticket
 - `SERVICELINE_NUMBER` - Service line number (join key)
-- `CREATED_DATETIME` - Trouble ticket creation date/time
-- `MODIFIED_DATETIME` - Trouble ticket last modification date/time
+- `CREATED_DATETIME` - Trouble ticket creation date/time (used with SERVICELINE_STARTDATE for 30-day calculation)
 
 **Filtering**: Excludes `SERVICELINE_NUMBER = '0'` or `'0000000000'`
 
@@ -231,6 +228,26 @@ These fields will be **NULL for**:
 - `COALESCE(soa.SERVICE_MODEL, sl.SERVICE_MODEL)` to get the service model from SERVICEORDER_ADDRESSES for service orders, or SERVICELINES for trouble tickets
 - `COALESCE(sla.SERVICELINE_ADDRESS_CITY, soa.SERVICEORDER_ADDRESS_CITY)` to get the city from SERVICELINE_ADDRESSES first (for both types), with SERVICEORDER_ADDRESSES as fallback for service orders
 
+### Serviceline Creating Order (alias: `sco`)
+**Source**: `CAMVIO.PUBLIC.SERVICELINES` joined to `CAMVIO.PUBLIC.SERVICEORDERS`  
+**Purpose**: Finds the service order that created each serviceline (used to populate ORDER_ID for trouble tickets)
+
+**Join**: LEFT JOIN on `CAST(tt.SERVICELINE_NUMBER AS VARCHAR) = sco.SERVICELINE_NUMBER AND sco.rn = 1` (in base_data CTE for trouble tickets)
+
+**Logic**:
+- Joins SERVICELINES to SERVICEORDERS on SERVICELINE_NUMBER
+- Uses ROW_NUMBER() to select one service order per serviceline, prioritizing:
+  1. Orders where CREATED_SERVICELINE_ID is not NULL (direct link)
+  2. Orders with closest date proximity to SERVICELINE_STARTDATE
+  3. Most recent CREATED_DATETIME
+
+**Key Fields**:
+- `SERVICELINE_NUMBER` - Join key
+- `ORDER_ID` - Order ID from the creating service order
+- `SERVICEORDER_ID` - Service order ID from the creating service order
+
+**Note**: Used to populate ORDER_ID and SERVICEORDER_ID for trouble tickets, enabling appointment joins on ORDER_ID
+
 ### Feature Aggregates (alias: `fa`)
 **Source**: Aggregated from `CAMVIO.PUBLIC.SERVICELINE_FEATURES`  
 **Purpose**: Feature pricing aggregates by service line
@@ -238,10 +255,10 @@ These fields will be **NULL for**:
 **Join**: LEFT JOIN on `bd.RECORD_TYPE = 'Service Order' AND bd.SERVICELINE_NUMBER = fa.SERVICELINE_NUMBER`
 
 **Aggregations**:
-- `TOTAL_FEATURE_PRICE` - SUM of (FEATURE_PRICE × QTY)
 - `TOTAL_FEATURE_AMOUNT` - SUM of (FEATURE_PRICE × QTY)
 - `FEATURE_COUNT` - COUNT(DISTINCT FEATURE)
 - `TOTAL_FEATURE_QUANTITY` - SUM of QTY
+- `FEATURES` - LISTAGG(DISTINCT FEATURE, ', ') - Concatenated feature names
 
 **Note**: Only populated when service orders have features
 
@@ -249,7 +266,7 @@ These fields will be **NULL for**:
 **Full Name**: `CAMVIO.PUBLIC.APPOINTMENTS`  
 **Purpose**: Appointment information (optional enrichment)
 
-**Join**: OUTER JOIN using ORDER_ID (for service orders) or TROUBLE_TICKET_ID (for trouble tickets), with fallback to SERVICELINE_NUMBER + ACCOUNT_ID
+**Join**: OUTER JOIN using ORDER_ID (for service orders and trouble tickets when ORDER_ID is available) or TROUBLE_TICKET_ID (for trouble tickets), with fallback to SERVICELINE_NUMBER + ACCOUNT_ID
 
 **Key Columns**:
 - `APPOINTMENT_ID` - Unique appointment identifier
@@ -275,12 +292,12 @@ Analyze all records by type:
 
 ### Example Query 2: Service Orders with Features
 Analyze service orders with feature pricing:
-- **Filter**: `RECORD_TYPE = 'Service Order'` AND `TOTAL_FEATURE_PRICE IS NOT NULL`
+- **Filter**: `RECORD_TYPE = 'Service Order'` AND `TOTAL_FEATURE_AMOUNT IS NOT NULL`
 - **Dimensions**: `SERVICE_MODEL`, `SERVICEORDER_TYPE`
 - **Metrics**: 
   - `COUNT(DISTINCT SERVICEORDER_ID)` - Number of service orders
-  - `SUM(TOTAL_FEATURE_PRICE)` - Total feature pricing
-  - `AVG(TOTAL_FEATURE_PRICE)` - Average feature pricing per service order
+  - `SUM(TOTAL_FEATURE_AMOUNT)` - Total feature amount
+  - `AVG(TOTAL_FEATURE_AMOUNT)` - Average feature amount per service order
 
 ### Example Query 3: Records with Appointments
 Identify records that have appointments:
@@ -298,11 +315,10 @@ Identify records missing appointments:
 
 ### Example Query 5: Feature Pricing by Service Model
 Analyze feature pricing by service model:
-- **Filter**: `RECORD_TYPE = 'Service Order'` AND `SERVICE_MODEL IS NOT NULL` AND `TOTAL_FEATURE_PRICE IS NOT NULL`
+- **Filter**: `RECORD_TYPE = 'Service Order'` AND `SERVICE_MODEL IS NOT NULL` AND `TOTAL_FEATURE_AMOUNT IS NOT NULL`
 - **Dimensions**: `SERVICE_MODEL`
 - **Metrics**: 
-  - `SUM(TOTAL_FEATURE_PRICE)` - Total pricing
-  - `SUM(TOTAL_FEATURE_AMOUNT)` - Total amount
+  - `SUM(TOTAL_FEATURE_AMOUNT)` - Total amount (price × quantity)
   - `AVG(FEATURE_COUNT)` - Average features per service order
 - **Use Case**: Understand feature pricing across service models
 
@@ -330,24 +346,24 @@ Analyze records by creation date:
 - **Metrics**: `COUNT(DISTINCT SERVICEORDER_ID)`, `COUNT(DISTINCT TROUBLE_TICKET_ID)`
 - **Use Case**: Track service order and trouble ticket creation trends over time
 
-### Example Query 9: Service Line vs Record Creation Date Comparison
-Compare serviceline creation date with record creation date (useful for trouble tickets):
-- **Filter**: `RECORD_TYPE = 'Trouble Ticket'` (or `RECORD_TYPE = 'Service Order'`)
+### Example Query 9: Service Line vs Trouble Ticket Creation Date Comparison
+Compare serviceline creation date with trouble ticket creation date:
+- **Filter**: `RECORD_TYPE = 'Trouble Ticket'` AND `CREATED_DATETIME IS NOT NULL`
 - **Dimensions**: 
   - `YEAR(SERVICELINE_CREATED_DATETIME)`, `YEAR(CREATED_DATETIME)`
-  - `RECORD_TYPE`
-- **Metrics**: `COUNT(DISTINCT TROUBLE_TICKET_ID)` or `COUNT(DISTINCT SERVICEORDER_ID)`
+- **Metrics**: `COUNT(DISTINCT TROUBLE_TICKET_ID)`
 - **Custom Column**: Calculate days between `SERVICELINE_CREATED_DATETIME` and `CREATED_DATETIME`
-- **Use Case**: Understand time between serviceline creation and trouble ticket/service order creation
+- **Use Case**: Understand time between serviceline creation and trouble ticket creation (30-day calculation)
 
 ## Notes
 
 - **Record Type**: Use `RECORD_TYPE` to distinguish between service orders and trouble tickets
 - **Appointment Coverage**: Use `HAS_APPOINTMENT` to identify records with/without appointments
 - **SERVICE_MODEL**: Available for both service orders and trouble tickets with service lines
-- **Feature Aggregates**: Only populated for service orders that have features - will be NULL for trouble tickets or service orders without features
+- **Feature Aggregates**: Only populated for service orders that have features - will be NULL for trouble tickets or service orders without features. Note: `TOTAL_FEATURE_PRICE` was removed as it was redundant with `TOTAL_FEATURE_AMOUNT`
 - **Trouble Ticket Notes**: Concatenated per trouble ticket ID, separated by ' | '
 - **SERVICELINE_NUMBER Filtering**: Invalid service line numbers ('0', '0000000000') are excluded
 - **Dual Join Strategy**: The query uses both ORDER_ID/TROUBLE_TICKET_ID and SERVICELINE_NUMBER + ACCOUNT_ID to maximize appointment join success
 - **Data Type Handling**: ORDER_ID and TROUBLE_TICKET_ID are converted from VARCHAR to NUMBER in appointments subquery, with invalid values becoming NULL
 - **Complete Coverage**: This model includes ALL service orders and trouble tickets, not just those with appointments
+- **ORDER_ID for Trouble Tickets**: Trouble tickets now have ORDER_ID and SERVICEORDER_ID populated from the service order that created the serviceline (via `serviceline_creating_order` CTE). This allows trouble tickets to join appointments using ORDER_ID when available, in addition to TROUBLE_TICKET_ID
