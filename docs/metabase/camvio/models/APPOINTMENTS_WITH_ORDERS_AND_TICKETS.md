@@ -105,6 +105,7 @@ These fields will be **NULL for**:
 | `STATUS` | TEXT | Category | Status | Service order status or trouble ticket status |
 | `SERVICEORDER_TYPE` | TEXT | Category | Service order type | Only populated when RECORD_TYPE = "Service Order" |
 | `SALES_AGENT` | TEXT | Entity Name | Sales agent for commissions | ⭐ Required for commission calculations, only populated when RECORD_TYPE = "Service Order" |
+| `SERVICEORDER_CREATED_DATETIME` | TIMESTAMP | Creation Timestamp | Service order creation date/time | Only populated when RECORD_TYPE = "Service Order", NULL for trouble tickets |
 | `TROUBLE_TICKET_ID` | NUMBER | Entity Key | Trouble ticket identifier | Only populated when RECORD_TYPE = "Trouble Ticket" |
 | `REPORTED_NAME` | TEXT | Entity Name | Name of person who reported the trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
 | `RESOLUTION_NAME` | TEXT | Entity Name | Name of person who resolved the trouble ticket | Only populated when RECORD_TYPE = "Trouble Ticket" |
@@ -161,6 +162,7 @@ These fields will be **NULL for**:
 - `STATUS` - Service order status
 - `SERVICEORDER_TYPE` - Type of service order
 - `SALES_AGENT` - Sales agent for commissions
+- `CREATED_DATETIME` - Service order creation date/time
 - `SERVICELINE_NUMBER` - Service line number (join key)
 
 **Filtering**: Excludes `SERVICELINE_NUMBER = '0'` or `'0000000000'`
@@ -341,10 +343,12 @@ Analyze appointments by date:
 ### Example Query 8: Records by Creation Date
 Analyze records by creation date:
 - **Dimensions**: 
-  - `YEAR(CREATED_DATETIME)`, `MONTH(CREATED_DATETIME)`
+  - For Service Orders: `YEAR(SERVICEORDER_CREATED_DATETIME)`, `MONTH(SERVICEORDER_CREATED_DATETIME)`
+  - For Trouble Tickets: `YEAR(CREATED_DATETIME)`, `MONTH(CREATED_DATETIME)`
   - `RECORD_TYPE`
 - **Metrics**: `COUNT(DISTINCT SERVICEORDER_ID)`, `COUNT(DISTINCT TROUBLE_TICKET_ID)`
 - **Use Case**: Track service order and trouble ticket creation trends over time
+- **Note**: Use `SERVICEORDER_CREATED_DATETIME` for service orders, `CREATED_DATETIME` for trouble tickets
 
 ### Example Query 9: Service Line vs Trouble Ticket Creation Date Comparison
 Compare serviceline creation date with trouble ticket creation date:

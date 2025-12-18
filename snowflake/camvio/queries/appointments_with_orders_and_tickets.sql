@@ -54,6 +54,7 @@ base_data AS (
         so.STATUS,
         so.SERVICEORDER_TYPE,
         INITCAP(REPLACE(so.SALES_AGENT, '.', ' ')) AS SALES_AGENT,  -- Required: Sales agent for commissions (title case, split on '.')
+        so.CREATED_DATETIME AS SERVICEORDER_CREATED_DATETIME,  -- Service order creation date/time
         CAST(NULL AS TIMESTAMP_NTZ) AS CREATED_DATETIME,  -- Only populated for trouble tickets
         CAST(NULL AS TIMESTAMP_NTZ) AS MODIFIED_DATETIME,  -- Not used
         
@@ -89,6 +90,7 @@ base_data AS (
         tt.STATUS,
         CAST(NULL AS TEXT) AS SERVICEORDER_TYPE,
         CAST(NULL AS TEXT) AS SALES_AGENT,
+        CAST(NULL AS TIMESTAMP_NTZ) AS SERVICEORDER_CREATED_DATETIME,  -- NULL for trouble tickets
         tt.CREATED_DATETIME,  -- Trouble Ticket CREATED_DATETIME (used with SERVICELINE_STARTDATE for 30-day calculation)
         CAST(NULL AS TIMESTAMP_NTZ) AS MODIFIED_DATETIME,  -- Not used
         
@@ -191,6 +193,7 @@ SELECT
     bd.STATUS,
     bd.SERVICEORDER_TYPE,
     bd.SALES_AGENT,
+    bd.SERVICEORDER_CREATED_DATETIME,  -- Service order creation date/time (NULL for trouble tickets)
     
     -- Feature Aggregates (populated for service orders with features)
     fa.TOTAL_FEATURE_AMOUNT,
@@ -369,7 +372,8 @@ ORDER BY
 --
 -- Service Order Fields:
 -- - SERVICEORDER_ID, ORDER_ID, STATUS, SERVICEORDER_TYPE, SALES_AGENT
--- - Feature aggregates (TOTAL_FEATURE_PRICE, etc.) - only populated when features exist
+-- - SERVICEORDER_CREATED_DATETIME: Service order creation date/time (NULL for trouble tickets)
+-- - Feature aggregates (TOTAL_FEATURE_AMOUNT, etc.) - only populated when features exist
 --
 -- Trouble Ticket Fields:
 -- - TROUBLE_TICKET_ID, STATUS, REPORTED_NAME, RESOLUTION_NAME
@@ -383,7 +387,8 @@ ORDER BY
 -- Common Fields (available for both):
 -- - SERVICE_MODEL (from SERVICEORDER_ADDRESSES for service orders, SERVICELINES for trouble tickets)
 -- - ADDRESS_CITY (from SERVICELINE_ADDRESSES for both types, with SERVICEORDER_ADDRESSES as fallback for service orders)
--- - CREATED_DATETIME, MODIFIED_DATETIME (from SERVICEORDERS for service orders, TROUBLE_TICKETS for trouble tickets)
+-- - CREATED_DATETIME: Trouble ticket creation date/time (NULL for service orders)
+-- - SERVICEORDER_CREATED_DATETIME: Service order creation date/time (NULL for trouble tickets)
 -- - SERVICELINE_CREATED_DATETIME (from SERVICELINES.SERVICELINE_STARTDATE for both types via SERVICELINE_NUMBER)
 -- - ACCOUNT_TYPE (from CUSTOMER_ACCOUNTS)
 --

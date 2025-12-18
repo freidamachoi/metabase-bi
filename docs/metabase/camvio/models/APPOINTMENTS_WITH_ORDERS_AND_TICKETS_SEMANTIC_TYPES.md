@@ -27,6 +27,7 @@ Semantic types in Metabase help the system understand what kind of data each col
 | `STATUS` | `bd.STATUS` | SERVICEORDERS.STATUS / TROUBLE_TICKETS.STATUS | **Category** | Service order status | Only populated when RECORD_TYPE = "Service Order" |
 | `SERVICEORDER_TYPE` | `bd.SERVICEORDER_TYPE` | SERVICEORDERS.SERVICEORDER_TYPE | **Category** | Service order type | Only populated when RECORD_TYPE = "Service Order" |
 | `SALES_AGENT` | `bd.SALES_AGENT` | SERVICEORDERS.SALES_AGENT | **Entity Name** | Sales agent for commissions | ⭐ Required for commission calculations, only populated when RECORD_TYPE = "Service Order" |
+| `SERVICEORDER_CREATED_DATETIME` | `bd.SERVICEORDER_CREATED_DATETIME` | SERVICEORDERS.CREATED_DATETIME | **Creation Timestamp** | Service order creation date/time | Only populated when RECORD_TYPE = "Service Order", NULL for trouble tickets |
 
 ### Feature Aggregate Fields (service orders with features only)
 
@@ -102,7 +103,7 @@ Semantic types in Metabase help the system understand what kind of data each col
 
 **Service Order Fields** (conditionally populated):
 - `SERVICEORDER_ID`, `ORDER_ID`: Populated for service orders. For trouble tickets, populated from the service order that created the serviceline (when available)
-- `SERVICEORDER_TYPE`, `SALES_AGENT`: Only populated when RECORD_TYPE = "Service Order"
+- `SERVICEORDER_TYPE`, `SALES_AGENT`, `SERVICEORDER_CREATED_DATETIME`: Only populated when RECORD_TYPE = "Service Order"
 - All feature aggregate fields (`TOTAL_FEATURE_AMOUNT`, etc.): Only populated when RECORD_TYPE = "Service Order"
 
 **Trouble Ticket Fields** (NULL when RECORD_TYPE = "Service Order"):
@@ -138,7 +139,7 @@ Semantic types in Metabase help the system understand what kind of data each col
 - **Service Model Analysis**: Use `SERVICE_MODEL` (Category) - available for both types
 - **Sales Agent Analysis**: Use `SALES_AGENT` (Entity Name) - ⭐ required for commission calculations
 - **Feature Pricing Analysis**: Use `TOTAL_FEATURE_AMOUNT` (Currency) + `SERVICE_MODEL` (Category) - filter to `RECORD_TYPE = 'Service Order'` and `TOTAL_FEATURE_AMOUNT IS NOT NULL`
-- **Date Analysis**: Use `CREATED_DATETIME` (Creation Timestamp) for trouble ticket creation dates (filter to `RECORD_TYPE = 'Trouble Ticket'`), or `APPOINTMENT_DATE` (filter to `HAS_APPOINTMENT = true`)
+- **Date Analysis**: Use `CREATED_DATETIME` (Creation Timestamp) for trouble ticket creation dates (filter to `RECORD_TYPE = 'Trouble Ticket'`), `SERVICEORDER_CREATED_DATETIME` (Creation Timestamp) for service order creation dates (filter to `RECORD_TYPE = 'Service Order'`), or `APPOINTMENT_DATE` (filter to `HAS_APPOINTMENT = true`)
 - **Account Analysis**: Use `ACCOUNT_TYPE` (Category) for account-based grouping
 - **Trouble Ticket Duration Analysis**: Use `TOTAL_DURATION_DAYS` (Duration) - filter to `RECORD_TYPE = 'Trouble Ticket'` AND `TOTAL_DURATION_DAYS IS NOT NULL` (available for all trouble tickets regardless of STATUS)
 - **Trouble Ticket Open Tasks**: Use `LATEST_OPEN_TASK_NAME` (Category), `LATEST_OPEN_TASK_ASSIGNEE` (Entity Name), `LATEST_OPEN_TASK_STARTED` (Creation Timestamp) - filter to `RECORD_TYPE = 'Trouble Ticket'` AND `STATUS != 'CLOSED'`
