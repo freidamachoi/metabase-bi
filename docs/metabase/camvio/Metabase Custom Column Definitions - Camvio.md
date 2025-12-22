@@ -334,40 +334,84 @@ trim(
     concat(
       upper(
         substring(
-          splitPart([Address City], " ", 1),
+          splitPart(
+            trim(
+              replace([Serviceline Address City], "-", " ")
+            ),
+            " ",
+            1
+          ),
           1,
           1
         )
       ),
       lower(
         substring(
-          splitPart([Address City], " ", 1),
+          splitPart(
+            trim(
+              replace([Serviceline Address City], "-", " ")
+            ),
+            " ",
+            1
+          ),
           2,
           length(
-            splitPart([Address City], " ", 1)
+            splitPart(
+              trim(
+                replace([Serviceline Address City], "-", " ")
+              ),
+              " ",
+              1
+            )
           ) - 1
         )
       )
     ),
     case(
-      isNull(splitPart([Address City], " ", 2)),
+      isNull(
+        splitPart(
+          trim(
+            replace([Serviceline Address City], "-", " ")
+          ),
+          " ",
+          2
+        )
+      ),
       "",
       concat(
         " ",
         concat(
           upper(
             substring(
-              splitPart([Address City], " ", 2),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                2
+              ),
               1,
               1
             )
           ),
           lower(
             substring(
-              splitPart([Address City], " ", 2),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                2
+              ),
               2,
               length(
-                splitPart([Address City], " ", 2)
+                splitPart(
+                  trim(
+                    replace([Serviceline Address City], "-", " ")
+                  ),
+                  " ",
+                  2
+                )
               ) - 1
             )
           )
@@ -375,24 +419,50 @@ trim(
       )
     ),
     case(
-      isNull(splitPart([Address City], " ", 3)),
+      isNull(
+        splitPart(
+          trim(
+            replace([Serviceline Address City], "-", " ")
+          ),
+          " ",
+          3
+        )
+      ),
       "",
       concat(
         " ",
         concat(
           upper(
             substring(
-              splitPart([Address City], " ", 3),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                3
+              ),
               1,
               1
             )
           ),
           lower(
             substring(
-              splitPart([Address City], " ", 3),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                3
+              ),
               2,
               length(
-                splitPart([Address City], " ", 3)
+                splitPart(
+                  trim(
+                    replace([Serviceline Address City], "-", " ")
+                  ),
+                  " ",
+                  3
+                )
               ) - 1
             )
           )
@@ -400,24 +470,50 @@ trim(
       )
     ),
     case(
-      isNull(splitPart([Address City], " ", 4)),
+      isNull(
+        splitPart(
+          trim(
+            replace([Serviceline Address City], "-", " ")
+          ),
+          " ",
+          4
+        )
+      ),
       "",
       concat(
         " ",
         concat(
           upper(
             substring(
-              splitPart([Address City], " ", 4),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                4
+              ),
               1,
               1
             )
           ),
           lower(
             substring(
-              splitPart([Address City], " ", 4),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                4
+              ),
               2,
               length(
-                splitPart([Address City], " ", 4)
+                splitPart(
+                  trim(
+                    replace([Serviceline Address City], "-", " ")
+                  ),
+                  " ",
+                  4
+                )
               ) - 1
             )
           )
@@ -425,24 +521,50 @@ trim(
       )
     ),
     case(
-      isNull(splitPart([Address City], " ", 5)),
+      isNull(
+        splitPart(
+          trim(
+            replace([Serviceline Address City], "-", " ")
+          ),
+          " ",
+          5
+        )
+      ),
       "",
       concat(
         " ",
         concat(
           upper(
             substring(
-              splitPart([Address City], " ", 5),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                5
+              ),
               1,
               1
             )
           ),
           lower(
             substring(
-              splitPart([Address City], " ", 5),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                5
+              ),
               2,
               length(
-                splitPart([Address City], " ", 5)
+                splitPart(
+                  trim(
+                    replace([Serviceline Address City], "-", " ")
+                  ),
+                  " ",
+                  5
+                )
               ) - 1
             )
           )
@@ -450,24 +572,50 @@ trim(
       )
     ),
     case(
-      isNull(splitPart([Address City], " ", 6)),
+      isNull(
+        splitPart(
+          trim(
+            replace([Serviceline Address City], "-", " ")
+          ),
+          " ",
+          6
+        )
+      ),
       "",
       concat(
         " ",
         concat(
           upper(
             substring(
-              splitPart([Address City], " ", 6),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                6
+              ),
               1,
               1
             )
           ),
           lower(
             substring(
-              splitPart([Address City], " ", 6),
+              splitPart(
+                trim(
+                  replace([Serviceline Address City], "-", " ")
+                ),
+                " ",
+                6
+              ),
               2,
               length(
-                splitPart([Address City], " ", 6)
+                splitPart(
+                  trim(
+                    replace([Serviceline Address City], "-", " ")
+                  ),
+                  " ",
+                  6
+                )
               ) - 1
             )
           )
