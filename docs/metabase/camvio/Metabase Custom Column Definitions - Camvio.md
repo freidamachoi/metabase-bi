@@ -82,6 +82,88 @@ trim(
 
 **Alternative (two columns):** Create a "Clean" column with `replace([Your Column], "_", " ")`, then use the existing **Item Status**-style formula on that column (split on `" "`, title-case each part). That avoids repeating the replace and keeps the expression shorter.
 
+### Title Case with spaces (replace underscore and period)
+
+Replaces `"_"` and `"."` with a single space, then title-cases the result. Replace `[Your Column]` with your column name. Handles up to 6 words; extend the pattern for more.
+
+**Normalize step** (replace `_` and `.` with space):
+
+```java
+replace(replace([Your Column], "_", " "), ".", " ")
+```
+
+**Full formula** (normalize + title case in one expression):
+
+```java
+trim(
+  concat(
+    concat(
+      upper(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 1), 1, 1)),
+      lower(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 1), 2, length(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 1)) - 1))
+    ),
+    case(
+      isNull(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 2)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 2), 1, 1)),
+          lower(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 2), 2, length(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 2)) - 1))
+        )
+      )
+    ),
+    case(
+      isNull(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 3)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 3), 1, 1)),
+          lower(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 3), 2, length(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 3)) - 1))
+        )
+      )
+    ),
+    case(
+      isNull(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 4)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 4), 1, 1)),
+          lower(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 4), 2, length(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 4)) - 1))
+        )
+      )
+    ),
+    case(
+      isNull(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 5)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 5), 1, 1)),
+          lower(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 5), 2, length(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 5)) - 1))
+        )
+      )
+    ),
+    case(
+      isNull(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 6)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 6), 1, 1)),
+          lower(substring(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 6), 2, length(splitPart(replace(replace([Your Column], "_", " "), ".", " "), " ", 6)) - 1))
+        )
+      )
+    )
+  )
+)
+```
+
+**Behavior:** `"some_value.here"` → `"Some Value Here"`, `"word_one.word_two"` → `"Word One Word Two"`. Result is trimmed.
+
+**Alternative (two columns):** Create a "Clean" column with `replace(replace([Your Column], "_", " "), ".", " ")`, then use the **Item Status**-style title-case formula on that column.
+
 ### Address Line (House Number + Street Direction + Street Name + Street Suffix)
 
 Concatenates address parts in CAPS with exactly one space between non-empty parts and no leading or trailing spaces. Empty/NULL parts are skipped so there are no double spaces.
@@ -1198,8 +1280,6 @@ trim(
 - Input: `"test/example-case"` → Output: `"Test Example Case"`
 
 ## Title Case (Single Word)
-
-### Title Case Single Word
 
 **Purpose**: Formats a single word to title case (first letter uppercase, rest lowercase).
 
