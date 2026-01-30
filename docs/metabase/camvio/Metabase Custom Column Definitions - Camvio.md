@@ -1,5 +1,138 @@
 # Metabase Custom Column Definitions (Camvio)
 
+## Reusable Formulas
+
+### Title Case (space or underscore between words)
+
+Use when the source string has words separated by a space `" "` or an underscore `"_"`. Replace `[Your Column]` with your column name. Handles up to 6 words; extend the pattern for more.
+
+**Step 1 – Normalize** (optional separate column): replace underscores with spaces so all delimiters are spaces.
+
+```java
+replace([Your Column], "_", " ")
+```
+
+**Step 2 – Title case** (single formula; uses normalized string inline):
+
+```java
+trim(
+  concat(
+    concat(
+      upper(substring(splitPart(replace([Your Column], "_", " "), " ", 1), 1, 1)),
+      lower(substring(splitPart(replace([Your Column], "_", " "), " ", 1), 2, length(splitPart(replace([Your Column], "_", " "), " ", 1)) - 1))
+    ),
+    case(
+      isNull(splitPart(replace([Your Column], "_", " "), " ", 2)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace([Your Column], "_", " "), " ", 2), 1, 1)),
+          lower(substring(splitPart(replace([Your Column], "_", " "), " ", 2), 2, length(splitPart(replace([Your Column], "_", " "), " ", 2)) - 1))
+        )
+      )
+    ),
+    case(
+      isNull(splitPart(replace([Your Column], "_", " "), " ", 3)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace([Your Column], "_", " "), " ", 3), 1, 1)),
+          lower(substring(splitPart(replace([Your Column], "_", " "), " ", 3), 2, length(splitPart(replace([Your Column], "_", " "), " ", 3)) - 1))
+        )
+      )
+    ),
+    case(
+      isNull(splitPart(replace([Your Column], "_", " "), " ", 4)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace([Your Column], "_", " "), " ", 4), 1, 1)),
+          lower(substring(splitPart(replace([Your Column], "_", " "), " ", 4), 2, length(splitPart(replace([Your Column], "_", " "), " ", 4)) - 1))
+        )
+      )
+    ),
+    case(
+      isNull(splitPart(replace([Your Column], "_", " "), " ", 5)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace([Your Column], "_", " "), " ", 5), 1, 1)),
+          lower(substring(splitPart(replace([Your Column], "_", " "), " ", 5), 2, length(splitPart(replace([Your Column], "_", " "), " ", 5)) - 1))
+        )
+      )
+    ),
+    case(
+      isNull(splitPart(replace([Your Column], "_", " "), " ", 6)),
+      "",
+      concat(
+        " ",
+        concat(
+          upper(substring(splitPart(replace([Your Column], "_", " "), " ", 6), 1, 1)),
+          lower(substring(splitPart(replace([Your Column], "_", " "), " ", 6), 2, length(splitPart(replace([Your Column], "_", " "), " ", 6)) - 1))
+        )
+      )
+    )
+  )
+)
+```
+
+**Alternative (two columns):** Create a "Clean" column with `replace([Your Column], "_", " ")`, then use the existing **Item Status**-style formula on that column (split on `" "`, title-case each part). That avoids repeating the replace and keeps the expression shorter.
+
+### Address Line (House Number + Street Direction + Street Name + Street Suffix)
+
+Concatenates address parts in CAPS with exactly one space between non-empty parts and no leading or trailing spaces. Empty/NULL parts are skipped so there are no double spaces.
+
+```java
+trim(
+  concat(
+    trim(upper(coalesce([House Number], ""))),
+    case(
+      trim(upper(coalesce([Street Direction], ""))) = "",
+      "",
+      concat(
+        case(trim(upper(coalesce([House Number], ""))) = "", "", " "),
+        trim(upper(coalesce([Street Direction], "")))
+      )
+    ),
+    case(
+      trim(upper(coalesce([Street Name], ""))) = "",
+      "",
+      concat(
+        case(
+          trim(upper(coalesce([House Number], ""))) = "" and trim(upper(coalesce([Street Direction], ""))) = "",
+          "",
+          " "
+        ),
+        trim(upper(coalesce([Street Name], "")))
+      )
+    ),
+    case(
+      trim(upper(coalesce([Street Suffix], ""))) = "",
+      "",
+      concat(
+        case(
+          trim(upper(coalesce([House Number], ""))) = "" and trim(upper(coalesce([Street Direction], ""))) = "" and trim(upper(coalesce([Street Name], ""))) = "",
+          "",
+          " "
+        ),
+        trim(upper(coalesce([Street Suffix], "")))
+      )
+    )
+  )
+)
+```
+
+**Behavior:**
+- Each part is trimmed and uppercased; NULL is treated as empty.
+- A single space is added before a part only when that part is non-empty and at least one part before it is non-empty.
+- Final result is trimmed so there is no leading or trailing space.
+
+---
+
 ## Appointments with Orders and Tickets (Enriched)
 
 ### Status Clean

@@ -12,6 +12,7 @@ This directory contains Metabase models, custom columns, and configurations for 
 
 ### Custom Column Definitions
 - `Custom Column Definitions - Render.md` - Metabase custom column definitions for Fybe models
+- `Custom Column Definitions - Vetro Service Locations.md` - Custom column definitions for Vetro service locations (e.g. State default NC, CAPS)
 - `drop_bury_custom_columns.txt` - Custom column definitions for drop/bury models
 
 ### Models (`models/`)
